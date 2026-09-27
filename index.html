@@ -115,6 +115,13 @@
     overflow: hidden; text-overflow: ellipsis;
   }
   #toast.show { opacity: 1; }
+  #joy {
+    position: fixed; left: 20px; bottom: 20px; width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35); border: 1px solid rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); touch-action: none;
+    display: grid; place-items: center;
+  }
+  #joyKnob { width: 52px; height: 52px; border-radius: 50%; background: rgba(34, 38, 42, 0.55); pointer-events: none; }
   #toast.bad { background: var(--warn); }
 
   #hud {
@@ -181,7 +188,7 @@
     <div class="label">มุมมอง</div>
     <div class="seg five" id="views">
       <button type="button" data-view="top">มุมบน</button>
-      <button type="button" data-view="entry">ยืนที่ประตู</button>
+      <button type="button" data-view="entry">ประตู</button>
       <button type="button" data-view="orbit" class="on">รอบห้อง</button>
       <button type="button" data-view="bath">ห้องน้ำ</button>
       <button type="button" data-view="balcony">ระเบียง</button>
@@ -242,6 +249,8 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
+<div id="joy" hidden aria-label="จอยสติ๊กเดิน"><div id="joyKnob"></div></div>
+
 <div id="hud">
   <span id="coord">ชี้บนพื้นเพื่อดูพิกัด</span>
   <span class="hint" id="hint"></span>
@@ -275,7 +284,7 @@ const FIXED = {
              { x0: W - 0.3, x1: W, z0: 4.45, z1: 5.00 }],            // ผนังนูนริมระเบียง ลึก 0.54 (วัด) · ผนังเหลือง 0.70 → 4.45 = 3.75
   bath:     { x1: 2.00, z0: 4.30, z1: 6.20,                        // ห้องน้ำ X 0–2.0 · ผนังหน้า Z=4.3 (วัด) · ผนังหลัง Z=6.2
               doorZ0: 4.33, doorZ1: 4.98, doorH: 2.05 },           // ประตู 0.65 เปิดจากซุ้มระเบียง (ซุ้มลึก 0.7)
-  bathWin:  { x0: 1.05, x1: 1.50, y0: 1.30, y1: 1.95 },           // หน้าต่างห้องน้ำ ผนังหลังโซนอาบน้ำ (บานกระทุ้งบน + กระจกฝ้าสีน้ำเงินล่าง)
+  bathWin:  { x0: 1.05, x1: 1.52, y0: 1.08, y1: 1.95 },           // หน้าต่างห้องน้ำ ผนังหลังโซนอาบน้ำ (บานกระทุ้งบน + กระจกฝ้าสีน้ำเงินล่าง)
   slider:   { x0: 2.20, x1: 3.70, h: 2.10 },                       // ประตูกระจกบานเลื่อนออกระเบียง ที่ Z=D
   ac:       { w: 0.85, h: 0.27, d: 0.21, cx: 2.95, y0: 2.31 },     // แอร์เหนือประตูระเบียง
   shelves:  { z0: 1.30, z1: 3.30, d: 0.25, y: [1.60, 1.95] },      // ชั้นไม้เหนือโต๊ะยาว (ผนัง X=0)
@@ -625,14 +634,38 @@ const bathSide = wallZ(B.z0, BALCONY_Z1, B.x1, -1, [{ a0: B.doorZ0, a1: B.doorZ1
   scene.add(box(MAT.metal, ix - w + 0.06, ix - w + 0.12, 1.0, 1.04, z + 0.05, z + 0.11));
 }
 const bathBack = wallX(-T, B.x1, B.z1, 1, [{ a0: F.bathWin.x0, a1: F.bathWin.x1, v0: F.bathWin.y0, h: F.bathWin.y1 }]);
-{ // หน้าต่างห้องน้ำ: วงกบขาว · บนกระจกใส · ล่างกระจกสีน้ำเงิน (u = x + T, ในห้อง = z < 0)
-  const w = F.bathWin, u0 = w.x0 + T, u1 = w.x1 + T, ym = w.y0 + (w.y1 - w.y0) * 0.42;
-  const fr = (a0, a1, b0, b1) => bathBack.add(box(MAT.frame, a0, a1, b0, b1, -0.03, T));
-  fr(u0 - 0.05, u1 + 0.05, w.y0 - 0.05, w.y0); fr(u0 - 0.05, u1 + 0.05, w.y1, w.y1 + 0.05);
-  fr(u0 - 0.05, u0, w.y0, w.y1); fr(u1, u1 + 0.05, w.y0, w.y1); fr(u0, u1, ym - 0.02, ym + 0.02);
-  const clear = box(MAT.glass, u0, u1, ym + 0.02, w.y1, T / 2 - 0.004, T / 2 + 0.004, { cast: false, receive: false });
-  clear.renderOrder = 2;
-  bathBack.add(clear, box(new THREE.MeshStandardMaterial({ color: 0x1f3fa8, roughness: 0.3 }), u0, u1, w.y0, ym - 0.02, T / 2 - 0.004, T / 2 + 0.004, { cast: false }));
+{ // หน้าต่างห้องน้ำ (จากรูป): วงกบกว้างสีขาว · บนบานกระทุ้งเปิดออก + มุ้งลวด · ล่างกระจกสีน้ำเงินติดตาย
+  // พิกัดภายในผนัง: u = x + T · ในห้อง = z < 0 · นอกอาคาร = z > T
+  const w = F.bathWin, u0 = w.x0 + T, u1 = w.x1 + T, ym = w.y0 + (w.y1 - w.y0) * 0.36;
+  const white = new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 0.45 });
+  const add = (m, a0, a1, b0, b1, c0, c1, o) => { const b = box(m, a0, a1, b0, b1, c0, c1, o); bathBack.add(b); return b; };
+  // ขอบปูนรอบช่อง (ยื่นเข้าห้อง) + วงกบ
+  add(white, u0 - 0.07, u1 + 0.07, w.y1, w.y1 + 0.07, -0.025, 0); add(white, u0 - 0.07, u1 + 0.07, w.y0 - 0.07, w.y0, -0.025, 0);
+  add(white, u0 - 0.07, u0, w.y0, w.y1, -0.025, 0); add(white, u1, u1 + 0.07, w.y0, w.y1, -0.025, 0);
+  add(white, u0, u1, w.y1 - 0.04, w.y1, 0, T); add(white, u0, u1, w.y0, w.y0 + 0.04, 0, T);
+  add(white, u0, u0 + 0.04, w.y0, w.y1, 0, T); add(white, u1 - 0.04, u1, w.y0, w.y1, 0, T);
+  add(white, u0 + 0.04, u1 - 0.04, ym - 0.025, ym + 0.025, 0, T);                       // คานแบ่งกลาง
+  // บานล่าง: กระจกสีน้ำเงิน
+  add(new THREE.MeshStandardMaterial({ color: 0x1d3fb0, roughness: 0.25 }), u0 + 0.04, u1 - 0.04, w.y0 + 0.04, ym - 0.025, T * 0.6 - 0.004, T * 0.6 + 0.004, { cast: false });
+  // บานบน: มุ้งลวด (ในห้อง) + บานกระทุ้งเปิดออกนอกอาคาร เอียง ~30°
+  const top0 = ym + 0.025, top1 = w.y1 - 0.04;
+  const screen = add(new THREE.MeshStandardMaterial({ color: 0x2a2d31, roughness: 0.9, transparent: true, opacity: 0.55, depthWrite: false }),
+    u0 + 0.04, u1 - 0.04, top0, top1, 0.012, 0.016, { cast: false, receive: false });
+  screen.renderOrder = 2;
+  add(white, u0 + 0.06, u1 - 0.06, top0 + 0.01, top0 + 0.03, -0.012, 0);                  // มือจับมุ้งลวด
+  const sash = new THREE.Group();
+  const sh = top1 - top0;
+  sash.add(box(white, u0 + 0.04, u1 - 0.04, -sh, -sh + 0.035, 0, 0.03));
+  sash.add(box(white, u0 + 0.04, u0 + 0.075, -sh, 0, 0, 0.03));
+  sash.add(box(white, u1 - 0.075, u1 - 0.04, -sh, 0, 0, 0.03));
+  const pane = box(MAT.glass, u0 + 0.075, u1 - 0.075, -sh + 0.035, 0, 0.012, 0.018, { cast: false, receive: false });
+  pane.renderOrder = 2;
+  sash.add(pane);
+  sash.position.set(0, top1, T);            // บานพับบน ขอบนอกผนัง
+  sash.rotation.x = -0.5;                   // ปลายล่างกระทุ้งออกนอกอาคาร
+  bathBack.add(sash);
+  for (const u of [u0 + 0.1, u1 - 0.1]) add(MAT.metal, u - 0.025, u + 0.025, w.y1 - 0.035, w.y1 + 0.015, -0.03, -0.02);   // บานพับ/ตัวล็อกบน
+  add(MAT.metal, u1 + 0.1, u1 + 0.12, w.y0 + 0.2, w.y0 + 0.24, -0.04, -0.025);             // ตะขอแขวนข้างหน้าต่าง
 }
 
 scene.add(wallFront, wallRight, wallLeft, wallBalc, bathFront, bathSide, bathBack);
@@ -1559,15 +1592,137 @@ function fitDistance(dir, target) {
   return need;
 }
 
+// =====================================================================
+// โหมดเดิน (มุมคนยืน): WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง · มือถือใช้จอยซ้ายล่าง
+// ชนผนัง บิวท์อิน สุขภัณฑ์ และเฟอร์นิเจอร์ · เดินผ่านประตูห้องน้ำ/ประตูระเบียงได้
+// =====================================================================
+const walk = (() => {
+  const R = 0.25, keys = new Set(), joyVec = { x: 0, y: 0 };   // รัศมีตัวคน (กันกล้องชิดผนังเกินไป)
+  const touch = matchMedia('(pointer: coarse)').matches;
+  let on = false, yaw = 0, pitch = 0, eyeY = 1.6, last = 0;
+  const pos = new V();
+  const Bz0 = FIXED.bath.z0 + T, ix = FIXED.bath.x1 - T, showerZ = Bz0 + 1.15;
+  const WALKABLE = [
+    { x0: 0, x1: W, z0: 0, z1: FIXED.bath.z0 },                                                   // ห้องหลัก
+    { x0: FIXED.bath.x1, x1: W, z0: FIXED.bath.z0 - 0.01, z1: D },                                 // ซุ้มหน้าระเบียง
+    { x0: 0, x1: ix, z0: Bz0, z1: FIXED.bath.z1 },                                                 // ห้องน้ำ
+    { x0: ix - 0.05, x1: FIXED.bath.x1 + 0.05, z0: FIXED.bath.doorZ0, z1: FIXED.bath.doorZ1 },     // ช่องประตูห้องน้ำ
+    { x0: FIXED.slider.x0, x1: FIXED.slider.x1, z0: D - 0.05, z1: D + T + 0.05 },                  // ช่องประตูระเบียง
+    { x0: FIXED.bath.x1, x1: W, z0: D + T, z1: BALCONY_Z1 - 0.14 },                                // ระเบียง (ถึงขอบปูน)
+  ];
+  // ตำแหน่งเดียวกับที่วาดในห้องน้ำ/ระเบียง
+  const FIXED_BLOCKS = [
+    ...FIXED.columns,
+    { x0: FIXED.vanity.x0, x1: FIXED.wardrobe.x1, z0: 0, z1: FIXED.wardrobe.z1 },
+    { x0: 0, x1: 0.5, z0: Bz0, z1: Bz0 + 0.62 },                                                   // เคาน์เตอร์อ่าง
+    { x0: 0, x1: 0.62, z0: Bz0 + 0.64, z1: Bz0 + 1.04 },                                           // ชักโครก
+    { x0: 0, x1: 0.95, z0: showerZ - 0.1, z1: showerZ },                                           // ผนังเตี้ย
+    { x0: 0, x1: 0.17, z0: showerZ, z1: FIXED.bath.z1 },                                           // หิ้งท่อ
+    { x0: W - 0.45, x1: W - 0.05, z0: BALCONY_Z1 - 0.62, z1: BALCONY_Z1 - 0.22 },                  // โต๊ะระเบียง
+    { x0: FIXED.bath.x1 + 0.08, x1: FIXED.bath.x1 + 0.52, z0: D + T + 0.08, z1: D + T + 0.77 },    // ราวตากผ้า
+  ];
+  const inside = (x, z) => WALKABLE.some((r) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1);
+  function blocked(x, z) {
+    for (const [px, pz] of [[x, z], [x - R, z], [x + R, z], [x, z - R], [x, z + R]]) if (!inside(px, pz)) return true;
+    const obs = FIXED_BLOCKS.concat(furniture.filter((f) => f.h > 0.25).map((f) => rectOf(f)));
+    return obs.some((o) => x > o.x0 - R && x < o.x1 + R && z > o.z0 - R && z < o.z1 + R);
+  }
+  const apply = () => { persp.position.set(pos.x, eyeY, pos.z); persp.rotation.set(pitch, yaw, 0, 'YXZ'); };
+
+  const joy = document.getElementById('joy'), knob = document.getElementById('joyKnob');
+  function start(e) {
+    on = true;
+    pos.set(e.pos.x, 0, e.pos.z);
+    eyeY = e.pos.y;
+    const d = e.look.clone().sub(e.pos);
+    yaw = Math.atan2(-d.x, -d.z);
+    pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
+    last = performance.now();
+    keys.clear();
+    joy.hidden = !touch;
+    if (touch) joy.style.bottom = `${(isMobile() ? innerHeight - panel.getBoundingClientRect().top : 0) + 20}px`;
+    apply();
+  }
+  function stop() { on = false; joy.hidden = true; keys.clear(); }
+  function update() {
+    const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    let f = -joyVec.y, s = joyVec.x;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) f += 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) f -= 1;
+    if (keys.has('KeyD')) s += 1;
+    if (keys.has('KeyA')) s -= 1;
+    if (keys.has('ArrowLeft')) yaw += 1.8 * dt;
+    if (keys.has('ArrowRight')) yaw -= 1.8 * dt;
+    const len = Math.hypot(f, s);
+    if (len > 0.05) {
+      const run = keys.has('ShiftLeft') || keys.has('ShiftRight');
+      const step = (run ? 2.6 : 1.4) * dt / Math.max(1, len);
+      const dx = (-Math.sin(yaw) * f + Math.cos(yaw) * s) * step, dz = (-Math.cos(yaw) * f - Math.sin(yaw) * s) * step;
+      const stuck = blocked(pos.x, pos.z);                       // ถ้าเกิดในที่ชน ให้เดินออกได้
+      if (stuck || !blocked(pos.x + dx, pos.z)) pos.x += dx;
+      if (stuck || !blocked(pos.x, pos.z + dz)) pos.z += dz;
+    }
+    apply();
+  }
+
+  // ลากเพื่อหันมอง (เมาส์และนิ้ว) — ดักก่อนระบบลากเฟอร์นิเจอร์/กล้อง
+  let look = null;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!on) return;
+    e.stopImmediatePropagation();
+    if (look) return;
+    look = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    canvas.setPointerCapture(e.pointerId);
+  }, { capture: true });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!on || !look || e.pointerId !== look.id) return;
+    yaw += (e.clientX - look.x) * 0.0045;
+    pitch = Math.max(-1.3, Math.min(1.3, pitch + (e.clientY - look.y) * 0.0045));
+    look.x = e.clientX; look.y = e.clientY;
+  });
+  const endLook = (e) => { if (look && e.pointerId === look.id) look = null; };
+  canvas.addEventListener('pointerup', endLook);
+  canvas.addEventListener('pointercancel', endLook);
+
+  addEventListener('keydown', (e) => {
+    if (!on || e.target.closest?.('input, textarea')) return;
+    if (/^(Key[WASD]|Arrow|Shift)/.test(e.code)) {
+      keys.add(e.code);
+      if (e.code.startsWith('Arrow')) e.preventDefault();
+    }
+  });
+  addEventListener('keyup', (e) => keys.delete(e.code));
+  addEventListener('blur', () => keys.clear());
+
+  // จอยสติ๊กบนจอสัมผัส
+  let joyId = null;
+  function moveJoy(e) {
+    const r = joy.getBoundingClientRect(), max = r.width / 2 - 22;
+    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const l = Math.hypot(dx, dy);
+    if (l > max) { dx *= max / l; dy *= max / l; }
+    joyVec.x = dx / max; joyVec.y = dy / max;
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+  joy.addEventListener('pointerdown', (e) => { joyId = e.pointerId; joy.setPointerCapture(e.pointerId); moveJoy(e); });
+  joy.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) moveJoy(e); });
+  const endJoy = (e) => { if (e.pointerId !== joyId) return; joyId = null; joyVec.x = joyVec.y = 0; knob.style.transform = ''; };
+  joy.addEventListener('pointerup', endJoy);
+  joy.addEventListener('pointercancel', endJoy);
+
+  return { start, stop, update, touch, get on() { return on; } };
+})();
+
 const EYE = { pos: new V((FIXED.entry.x0 + FIXED.entry.x1) / 2, 1.6, 0.35), look: new V(2.7, 1.3, D) };
-const BATH_EYE = { pos: new V(FIXED.bath.x1 + 0.35, 1.6, (FIXED.bath.doorZ0 + FIXED.bath.doorZ1) / 2), look: new V(0.2, 0.85, FIXED.bath.z0 + 1.05) };
+const BATH_EYE = { pos: new V(FIXED.bath.x1 - 0.3, 1.6, FIXED.bath.z0 + 0.25), look: new V(0.75, 1.2, FIXED.bath.z1) };   // ยืนในห้องน้ำหลังประตู มองไปโซนอาบน้ำ + หน้าต่าง
 const BALC_EYE = { pos: new V(W - 0.25, 1.6, D + 0.2), look: new V(FIXED.bath.x1 + 0.1, 1.45, BALCONY_Z1 - 0.25) };
 const ORBIT = { dir: new V(-4.5, 5.9, -7.3).normalize(), target: new V(W / 2, 0.8, BALCONY_Z1 / 2) };
 const HINT = {
   top: 'ลากพื้นเพื่อเลื่อน · สกรอลเพื่อซูม · ลากเฟอร์นิเจอร์เพื่อย้าย',
-  entry: 'ลากเพื่อหันมอง · ความสูงสายตา 1.6 ม.',
-  bath: 'ยืนที่ประตูห้องน้ำ · ลากเพื่อหันมอง',
-  balcony: 'ยืนบนระเบียง · ลากเพื่อหันมอง',
+  entry: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
+  bath: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
+  balcony: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
   orbit: 'ลากเพื่อหมุน · คลิกขวาลากเพื่อเลื่อน · สกรอลเพื่อซูม',
 };
 const perspTarget = new V();
@@ -1584,6 +1739,8 @@ function setView(name, instant = false) {
   controls.autoRotate = false;
   controls.autoRotateSpeed = 0.6;
   controls.enableRotate = !top;
+  controls.enabled = !entry;
+  if (!entry) walk.stop();
   controls.enableZoom = !entry;
   controls.enablePan = !entry;
   controls.rotateSpeed = entry ? 0.35 : 1;
@@ -1608,8 +1765,9 @@ function setView(name, instant = false) {
   } else {
     let pos, target;
     if (entry) {
-      const e = name === 'bath' ? BATH_EYE : name === 'balcony' ? BALC_EYE : EYE;
-      pos = e.pos.clone(); target = e.look.clone().sub(e.pos).setLength(0.1).add(e.pos);
+      walk.start(name === 'bath' ? BATH_EYE : name === 'balcony' ? BALC_EYE : EYE);
+      if (walk.touch) toast('ใช้จอยซ้ายล่างเพื่อเดิน · ลากจอเพื่อหันมอง');
+      return;
     }
     else { target = ORBIT.target.clone(); pos = target.clone().addScaledVector(ORBIT.dir, fitDistance(ORBIT.dir, target)); }
     controls.target.copy(perspTarget);
@@ -1908,7 +2066,7 @@ renderer.setAnimationLoop(() => {
     controls.target.lerpVectors(tween.from.target, tween.to.target, k);
     if (t === 1) { tween = null; if (view === 'orbit') controls.autoRotate = true; }
   }
-  controls.update();
+  if (walk.on) walk.update(); else controls.update();
   updateCutaway();
   renderer.render(scene, activeCam);
   labelRenderer.render(scene, activeCam);
