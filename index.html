@@ -268,8 +268,8 @@ const FIXED = {
   entry:    { x0: 0.12, x1: 1.02, h: 2.10 },                      // ประตูทางเข้า 0.9 ชิดมุมผนังโต๊ะ บานพับฝั่งมุม
   vanity:   { x0: 1.60, x1: 2.60, z0: 0.00, z1: 0.45, h: 0.75 },  // โต๊ะเครื่องแป้งบิวท์อิน ชิดผนังทางเข้า
   wardrobe: { x0: 2.60, x1: 3.70, z0: 0.00, z1: 0.60 },           // ตู้เสื้อผ้าบิวท์อิน บานขาว สูงถึงฝ้า
-  columns:  [{ x0: 3.70, x1: W, z0: 0.00, z1: 0.60 },             // เสาข้างตู้เสื้อผ้า (กว้าง 0.30)
-             { x0: W - 0.2, x1: W, z0: 4.35, z1: 4.55 }],            // เสาปลายผนังเหลือง (0.60 + 3.75)
+  columns:  [{ x0: 3.70, x1: W, z0: 0.00, z1: 0.70 },             // เสาข้างตู้เสื้อผ้า กว้าง 0.30 ยื่นเลยหน้าตู้ ~0.1 (ขอบเตียงชนเสานี้)
+             { x0: W - 0.2, x1: W, z0: 4.45, z1: 4.65 }],            // เสาปลายผนังเหลือง (0.70 + 3.75)
   bath:     { x1: 2.00, z0: 4.30, z1: 6.85,                        // ห้องน้ำ X 0–2.0 · ผนังหน้า Z=4.3 (วัด) · ผนังหลัง Z=6.85
               doorZ0: 4.80, doorZ1: 5.50, doorH: 2.05 },           // ประตู 0.7 เปิดจากซุ้มระเบียง
   bathWin:  { z0: 6.30, z1: 6.75, y0: 1.35, y1: 1.95 },           // หน้าต่างห้องน้ำ (ออกช่องชาฟต์)
@@ -301,7 +301,8 @@ const CATALOG = {
   bed6:     { name: 'เตียง 6 ฟุต',      w: 1.90, d: 2.10, h: 1.00, color: '#4a342a' },
   bed:      { name: 'เตียง 5 ฟุต',      w: 1.60, d: 2.10, h: 1.00, color: '#4a342a' },
   deskunit: { name: 'โต๊ะยาว + ตู้ทีวี',  w: 2.80, d: 0.55, h: 0.75, color: '#3f2d25' },
-  desk:     { name: 'โต๊ะทำงาน',        w: 1.20, d: 0.60, h: 0.75, color: '#c9a67f' },
+  desk:     { name: 'โต๊ะ 120×60',      w: 1.20, d: 0.60, h: 0.75, color: '#f1f1ef' },
+  desk100:  { name: 'โต๊ะ 100×60',      w: 1.00, d: 0.60, h: 0.75, color: '#f1f1ef' },
   chair:    { name: 'เก้าอี้',          w: 0.55, d: 0.55, h: 0.90, color: '#2b2d30' },
   fridge:   { name: 'ตู้เย็นเล็ก',       w: 0.50, d: 0.55, h: 0.85, color: '#2a2b2e' },
   rack:     { name: 'ราวแขวนผ้า',       w: 0.80, d: 0.45, h: 0.95, color: '#c9a06a' },
@@ -310,14 +311,16 @@ const CATALOG = {
   tv:       { name: 'ทีวี 50" + ตู้วาง', w: 1.20, d: 0.40, h: 1.17, color: '#8b6b4f' },
 };
 
-// การจัดตามรูปห้องจริง: เตียงหัวชนผนังเหลือง · โต๊ะยาว + ตู้ทีวี + ตู้เย็นชิดผนังขวา · โต๊ะคอมขาวหน้าซุ้มระเบียง
+// การจัดตามรูปห้องจริง: เตียงหัวชนผนังเหลือง ขอบเตียงชนเสาข้างตู้ · โต๊ะยาว + ตู้ทีวี + ตู้เย็นชิดผนังขวา
+// โต๊ะคอม 2 ตัวเป็นรูปตัว L ในมุมผนังเหลือง: 100×60 ชิดผนังเหลือง (ถึงเสาข้างประตูระเบียง) + 120×60 ยื่นออกมาข้างเตียง
 const DEFAULT_LAYOUT = [
-  { type: 'bed6',     x: W - 1.05, z: 2.10, rotation: 90 },
+  { type: 'bed6',     x: W - 1.05, z: 0.70 + 0.95, rotation: 90 },
   { type: 'deskunit', x: 0.275,    z: 2.35, rotation: 270 },
   { type: 'chair',    x: 0.90,     z: 1.60, rotation: 90 },
   { type: 'fridge',   x: 0.275,    z: 4.03, rotation: 270 },
-  { type: 'desk',     x: 3.35,     z: 4.85, rotation: 0, name: 'โต๊ะคอม', color: '#f1f1ef' },
-  { type: 'chair',    x: 3.35,     z: 4.20, rotation: 180, name: 'เก้าอี้ทำงาน', color: '#1f2023' },
+  { type: 'desk100',  x: W - 0.30, z: 3.95, rotation: 90, name: 'โต๊ะคอม 100×60' },
+  { type: 'desk',     x: W - 0.60, z: 3.15, rotation: 180, name: 'โต๊ะคอม 120×60' },
+  { type: 'chair',    x: 3.05,     z: 4.00, rotation: 270, name: 'เก้าอี้ทำงาน', color: '#1f2023' },
 ];
 
 // {id, type, name, w, d, h, x, z, rotation, color} — x, z = กึ่งกลางบนพื้น · w ตาม X · d ตาม Z · rotation องศา
@@ -981,6 +984,7 @@ const BUILD = {
 };
 
 BUILD.bed6 = BUILD.bed;
+BUILD.desk100 = BUILD.desk;
 
 // =====================================================================
 // พื้นที่ + การชน
@@ -1202,7 +1206,7 @@ function removeSelected() {
 }
 
 // ---------- บันทึก ----------
-const STORE_KEY = 'dreamrooms.fourlights.v3';
+const STORE_KEY = 'dreamrooms.fourlights.v4';
 const serialize = () => ({
   app: 'DreamRooms', version: 1, room: { W, D, H }, savedAt: new Date().toISOString(),
   furniture: furniture.map(({ id, type, name, w, d, h, x, z, rotation, color }) => ({ id, type, name, w, d, h, x, z, rotation, color })),
@@ -1237,9 +1241,9 @@ function loadLayout(list) {
   selectedId = null;
   rebuild();
 }
-const defaultLayout = () => DEFAULT_LAYOUT.map(({ type, x, z, rotation, name, color }) => {
+const defaultLayout = () => DEFAULT_LAYOUT.map(({ type, x, z, rotation, ...o }) => {
   const c = CATALOG[type];
-  return { id: newId(), type, name: name || c.name, w: c.w, d: c.d, h: c.h, x, z, rotation, color: color || c.color };
+  return { id: newId(), type, name: c.name, w: c.w, d: c.d, h: c.h, color: c.color, ...o, x, z, rotation };
 });
 function download(blob, name) {
   const a = document.createElement('a');
