@@ -424,7 +424,7 @@ sun.shadow.normalBias = 0.02;
 scene.add(sun, sun.target);
 
 // ดาวน์ไลท์ = spot ส่องลง (ไม่ส่องเพดานเหมือนไฟจริง)
-const DOWNLIGHTS = [[1.0, 1.0], [3.2, 1.0], [2.0, 2.7], [3.0, 4.9]];
+const DOWNLIGHTS = [[0.9, 1.0], [3.0, 1.0], [0.9, 2.6], [2.7, 2.8]];   // ดาวน์ไลท์ 4 ดวงตามรูปฝ้า (2 ดวงฝั่งประตู + 2 ดวงกลางห้อง)
 const downlights = DOWNLIGHTS.map(([x, z]) => {
   const p = new THREE.SpotLight(0xfff4e6, 2.6, 0, Math.PI / 2.6, 0.7, 2);
   p.position.set(x, 2.56, z);
@@ -744,6 +744,9 @@ const ceiling = new THREE.Group();
     dl.position.set(x, H - 0.002, z);
     ceiling.add(dl);
   }
+  const smoke = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.035, 24), MAT.white);   // ตัวจับควัน
+  smoke.position.set(1.9, H - 0.018, 1.9);
+  ceiling.add(smoke);
   const bc = new THREE.Mesh(new THREE.PlaneGeometry(B.x1 - T, B.z1 - B.z0 - T), MAT.ceiling);   // ฝ้าห้องน้ำ
   bc.rotation.x = Math.PI / 2;
   bc.position.set((B.x1 - T) / 2, 2.45, (B.z0 + T + B.z1) / 2);
@@ -1049,6 +1052,12 @@ const CURTAIN_TEX = canvasTexture(512, (g, S) => {           // 1 แผ่น =
     }
   }
 }, 1, 1);
+const CURTAIN_MAT = new THREE.MeshPhysicalMaterial({
+  map: CURTAIN_TEX, roughness: 0.5, side: THREE.DoubleSide,
+  sheen: 0.8, sheenColor: new THREE.Color(0xfff0dc), sheenRoughness: 0.35,
+});
+const CURTAIN_HEAD = new THREE.MeshStandardMaterial({ color: 0xcdb392, roughness: 0.6 });
+const CURTAIN_TRACK = new THREE.MeshStandardMaterial({ color: 0xf0efea, roughness: 0.35, metalness: 0.2 });
 function curtainPanel(x0, x1, top, z, gather) {
   const w = x1 - x0, h = top - 0.02, period = 0.15 / gather, amp = 0.022 * Math.sqrt(gather);
   const geo = new THREE.PlaneGeometry(w, h, Math.ceil(w / 0.008), 30);
@@ -1059,40 +1068,45 @@ function curtainPanel(x0, x1, top, z, gather) {
     const pinch = Math.pow(Math.abs(Math.sin(ph / 2)), 0.6) * 2 - 1;   // ลอนจีบแหลมด้านบน → คลายเป็นลอนนุ่มด้านล่าง
     const wave = pinch * (1 - t) + Math.sin(ph) * t;
     p.setZ(i, wave * amp * (0.55 + 0.7 * t) + Math.sin(ph * 0.31 + t * 2.4) * 0.008 * t);
+    p.setX(i, p.getX(i) * (1 - 0.04 * t * (gather - 1) / gather));    // ชายล่างสอบเข้าเล็กน้อยตอนรวบ
   }
   geo.computeVertexNormals();
-  const tex = CURTAIN_TEX.clone();
-  tex.needsUpdate = true;
-  tex.repeat.set(w / 0.6, h / 0.6);
-  const mat = new THREE.MeshPhysicalMaterial({
-    map: tex, roughness: 0.5, side: THREE.DoubleSide,
-    sheen: 0.8, sheenColor: new THREE.Color(0xfff0dc), sheenRoughness: 0.35,
-  });
-  const m = new THREE.Mesh(geo, mat);
+  CURTAIN_TEX.repeat.set((w * gather) / 0.6 / 1.1, h / 0.6);            // ลายผ้าคงขนาดเมื่อรวบ/คลี่
+  const m = new THREE.Mesh(geo, CURTAIN_MAT);
   m.position.set(x0 + w / 2, 0.02 + h / 2, z);
   m.castShadow = m.receiveShadow = true;
   curtain.add(m);
-  // หัวจีบ 3 ทบ + ตะขอ ทุกช่วงลอน
-  const head = new THREE.MeshStandardMaterial({ color: 0xcdb392, roughness: 0.6 });
-  for (let x = x0 + period * 0.5; x < x1 - 0.01; x += period) {
-    curtain.add(box(head, x - 0.012, x + 0.012, top - 0.12, top - 0.02, z - 0.025, z + 0.02));
+  for (let x = x0 + period * 0.5; x < x1 - 0.01; x += period) {      // หัวจีบ 3 ทบ + ตะขอ ทุกลอน
+    curtain.add(box(CURTAIN_HEAD, x - 0.012, x + 0.012, top - 0.12, top - 0.02, z - 0.025, z + 0.02));
     curtain.add(box(MAT.metal, x - 0.004, x + 0.004, top - 0.02, top + 0.02, z - 0.004, z + 0.004, { cast: false }));
   }
-  curtain.add(box(head, x0, x1, top - 0.1, top - 0.02, z - 0.012, z + 0.006, { cast: false }));   // ผ้าเทปหัวม่าน
+  curtain.add(box(CURTAIN_HEAD, x0, x1, top - 0.1, top - 0.02, z - 0.012, z + 0.006, { cast: false }));   // ผ้าเทปหัวม่าน
 }
-function buildCurtain(closed) {
+// amount: 0 = เปิด (รวบฝั่งผนังเหลือง) · 1 = ปิด (คลี่เต็มประตูกระจก) · ค่าระหว่างกลาง = กำลังรูด
+function buildCurtain(amount) {
   if (typeof invalidate === 'function') invalidate({ shadows: true });
-  curtain.traverse((o) => {
-    o.geometry?.dispose();
-    if (o.material?.map && o.material.map !== CURTAIN_TEX) { o.material.map.dispose(); o.material.dispose(); }
-  });
+  curtain.traverse((o) => o.geometry?.dispose());
   curtain.clear();
   const x0 = F.slider.x0 - 0.15, x1 = F.slider.x1 + 0.08, z = D - 0.1, top = F.slider.h + 0.12;
-  const track = new THREE.MeshStandardMaterial({ color: 0xf0efea, roughness: 0.35, metalness: 0.2 });
-  curtain.add(box(track, x0 - 0.03, x1 + 0.03, top + 0.02, top + 0.05, z - 0.03, z + 0.03));        // รางม่านอลูมิเนียมขาว
-  for (const x of [x0, x1]) curtain.add(box(track, x - 0.02, x + 0.02, top + 0.05, top + 0.09, z - 0.02, D));   // ขายึดผนัง
-  if (closed) curtainPanel(x0, x1, top, z, 1.1);             // ปิด: คลี่เต็มประตู
-  else curtainPanel(x1 - 0.42, x1, top, z, 3);               // เปิด: รวบฝั่งผนังเหลือง ลอนถี่
+  curtain.add(box(CURTAIN_TRACK, x0 - 0.03, x1 + 0.03, top + 0.02, top + 0.05, z - 0.03, z + 0.03));      // รางม่านอลูมิเนียมขาว
+  for (const x of [x0, x1]) curtain.add(box(CURTAIN_TRACK, x - 0.02, x + 0.02, top + 0.05, top + 0.09, z - 0.02, D));   // ขายึดผนัง
+  const a = Math.max(0, Math.min(1, Number(amount))), full = x1 - x0, w = 0.42 + (full - 0.42) * a;
+  curtainPanel(x1 - w, x1, top, z, (full * 1.1) / w);
+  curtain.userData.amount = a;
+}
+// รูดม่านแบบนุ่ม ๆ — loop เรียก stepCurtain ทุกเฟรม
+let curtainTarget = 0;
+function setCurtain(closed) {
+  curtainTarget = closed ? 1 : 0;
+  const cb = document.getElementById('tCurtain');
+  if (cb) cb.checked = closed;
+  invalidate();
+}
+function stepCurtain(dt) {
+  const a = curtain.userData.amount ?? 0;
+  if (Math.abs(a - curtainTarget) < 1e-3) return;
+  const next = a + Math.sign(curtainTarget - a) * Math.min(Math.abs(curtainTarget - a), dt * 1.4);
+  buildCurtain(next);
 }
 buildCurtain(false);
 
@@ -1921,7 +1935,7 @@ function syncLabels() { invalidate(); fixedLabels.forEach((o) => { o.visible = t
 tLabels.addEventListener('change', syncLabels);
 document.getElementById('tGrid').addEventListener('change', (e) => { grid.visible = e.target.checked; });
 document.getElementById('tCeil').addEventListener('change', (e) => { ceiling.visible = e.target.checked; });
-document.getElementById('tCurtain').addEventListener('change', (e) => buildCurtain(e.target.checked));
+document.getElementById('tCurtain').addEventListener('change', (e) => setCurtain(e.target.checked));
 document.getElementById('tAccent').addEventListener('change', (e) => { MAT.accent.color.set(e.target.checked ? WALL_ACCENT : WALL_CREAM); });
 
 function setGhost(group, on) {
@@ -2034,11 +2048,22 @@ addEventListener('pointerdown', (e) => {
 canvas.addEventListener('pointerup', (e) => {
   if (!tapStart || Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) > 8 || walk.locked) { tapStart = null; return; }
   const now = performance.now(), tap = { t: now, x: e.clientX, y: e.clientY };
+  if (hitCurtain(e)) { setCurtain(curtainTarget < 0.5); lastTap = null; tapStart = null; return; }
   const isDouble = lastTap && now - lastTap.t < 350 && Math.hypot(tap.x - lastTap.x, tap.y - lastTap.y) < 25;
   lastTap = isDouble ? null : tap;
   tapStart = null;
   if (isDouble && !pickFurniture(e)) walkToFloor(e);
 });
+function hitCurtain(e) {
+  if (walk.locked) {                                          // ล็อกเมาส์: ยิงจากจุดเล็ง
+    const { l, t, b } = insets();
+    pointer.set(((innerWidth / 2 + l / 2) / innerWidth) * 2 - 1, -((innerHeight / 2 - (b - t) / 2) / innerHeight) * 2 + 1);
+    raycaster.setFromCamera(pointer, activeCam);
+  } else setRay(e);
+  const blockers = CUTAWAY.map((c) => c.group).filter((g) => !g.userData.ghost).concat(furnitureGroup, bathFront, bathSide);
+  const hit = raycaster.intersectObjects([curtain, ...blockers], true)[0];   // ต้องไม่มีผนัง/ของบังอยู่ก่อน
+  return !!hit && hit.object.parent === curtain;
+}
 function walkToFloor(e) {
   const p = floorPoint(e);
   if (!p) return;
@@ -2310,6 +2335,8 @@ renderer.setAnimationLoop(() => {
   updateCutaway();
   activeCam.updateMatrixWorld();
   const now = performance.now();
+  stepCurtain(Math.min(0.05, (now - (stepCurtain.last ?? now)) / 1000));
+  stepCurtain.last = now;
   const moved = !matNear(lastView, activeCam.matrixWorld) || !matNear(lastProj, activeCam.projectionMatrix);
   if (!moved && !needFrame && now > dirtyUntil) { lastFrame = now; return; }   // ภาพนิ่ง — ไม่ต้องวาด
   needFrame = false;
