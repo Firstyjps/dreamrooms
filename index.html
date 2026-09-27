@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DreamRooms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #e9eef1;
+    --panel: rgba(255, 255, 255, 0.9);
+    --ink: #22262a;
+    --muted: #6b737b;
+    --line: rgba(34, 38, 42, 0.12);
+    --accent: #b0703c;
+    --accent-soft: #f4e7da;
+    --warn: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 "IBM Plex Sans Thai", system-ui, sans-serif;
+  }
+  #app { position: fixed; inset: 0; }
+  #app canvas { display: block; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+
+  #panel {
+    position: fixed; top: 16px; left: 16px;
+    width: 272px; max-height: calc(100% - 80px); overflow: auto;
+    background: var(--panel);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px 12px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  }
+  #panel h1 { font-size: 16px; font-weight: 600; margin: 0; }
+  #panel .sub { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+  #panel section { margin-top: 14px; }
+  .label {
+    font-size: 11.5px; font-weight: 600; letter-spacing: .04em;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .views { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .views button {
+    font: inherit; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    border-radius: 8px; padding: 6px 8px;
+  }
+  .views button:hover { border-color: var(--accent); }
+  .views button.on { background: var(--accent-soft); border-color: var(--accent); color: #7a4a22; }
+  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; font-size: 13px; }
+  .toggles label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .toggles input { accent-color: var(--accent); }
+  #fList { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  #fList li { padding: 5px 0; border-top: 1px solid var(--line); }
+  #fList li:first-child { border-top: 0; }
+  #fList .dim { color: var(--muted); font-size: 12px; }
+  #fList .warn { color: var(--warn); font-size: 12px; }
+  #fList .empty { color: var(--muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: rgba(0,0,0,.05); padding: 0 4px; border-radius: 4px; }
+  details { margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+  details summary { cursor: pointer; color: var(--ink); font-weight: 500; }
+  details p { margin: 6px 0 0; }
+
+  #hud {
+    position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    display: flex; gap: 14px; align-items: center; white-space: nowrap;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px; font-size: 12.5px; color: var(--muted);
+  }
+  #coord { color: var(--ink); font-variant-numeric: tabular-nums; min-width: 128px; }
+
+  .tag {
+    font: 500 12px "IBM Plex Sans Thai", system-ui, sans-serif;
+    color: #2b2f33; background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 6px; padding: 1px 7px;
+    white-space: nowrap;
+  }
+
+  .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  #more-btn {
+    display: none; font: inherit; font-size: 12.5px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    border-radius: 999px; padding: 3px 10px; white-space: nowrap;
+  }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (max-width: 640px) {
+    #panel {
+      top: auto; left: 16px; right: 16px; width: auto;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      max-height: 55%; padding: 12px 14px;
+    }
+    #panel .sub { font-size: 12px; }
+    #panel section { margin-top: 10px; }
+    .views { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .views button { font-size: 12px; padding: 6px 2px; }
+    #more-btn { display: inline-block; }
+    #panel:not(.open) #more { display: none; }
+    #hud { display: none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="labels"></div>
+
+<aside id="panel">
+  <div class="head">
+    <div>
+      <h1>ห้องคอนโด 24 ตร.ม.</h1>
+      <p class="sub">3.40 × 7.00 ม. · เพดานสูง 2.60 ม.</p>
+    </div>
+    <button id="more-btn" type="button" aria-expanded="false" aria-controls="more">ตัวเลือก</button>
+  </div>
+
+  <section>
+    <div class="label">มุมมอง</div>
+    <div class="views" id="views">
+      <button data-view="overview" class="on">ภาพรวม 3D</button>
+      <button data-view="top">แปลนจากบน</button>
+      <button data-view="entry">ยืนที่ประตู</button>
+      <button data-view="window">มองจากหน้าต่าง</button>
+    </div>
+  </section>
+
+  <div id="more">
+  <section class="toggles">
+    <label><input type="checkbox" id="tCut" checked> ตัดผนังที่บัง</label>
+    <label><input type="checkbox" id="tCeil" checked> เพดาน</label>
+    <label><input type="checkbox" id="tGrid"> กริด 0.5 ม.</label>
+    <label><input type="checkbox" id="tLabels" checked> ป้ายชื่อ</label>
+  </section>
+
+  <section>
+    <div class="label">เฟอร์นิเจอร์ <span id="fCount"></span></div>
+    <ul id="fList"></ul>
+  </section>
+
+  <details>
+    <summary>ทิศและพิกัด</summary>
+    <p>จุด (0, 0) = มุมขวาของผนังทางเข้า เมื่อยืนที่ประตูหันหน้าไประเบียง</p>
+    <p><b>X</b> = ความกว้าง 0 → 3.40 (ขวา → ซ้าย)<br><b>Z</b> = ความลึก 0 → 7.00 (ประตู → ระเบียง)</p>
+    <p>ชี้เมาส์บนพื้นเพื่ออ่านพิกัดจริงเป็นเมตร</p>
+  </details>
+  </div>
+</aside>
+
+<div id="hud">
+  <span id="coord">ชี้บนพื้นเพื่อดูพิกัด</span>
+  <span class="hint">ลากเพื่อหมุน · คลิกขวาลากเพื่อเลื่อน · สกรอลเพื่อซูม</span>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// =====================================================================
+// ขนาดห้อง (เมตร, 1 unit = 1 m)
+// ทิศ: ยืนที่ประตู (Z=0) หันหน้าไประเบียง (Z=7) → ขวามือ = X=0, ซ้ายมือ = X=3.4
+// =====================================================================
+const ROOM = { W: 3.4, D: 7.0, H: 2.6, WALL: 0.1 };
+
+// องค์ประกอบคงที่ (พิกัดผิวในห้อง)
+const FIXED = {
+  entry:   { x0: 0.10, x1: 1.00, h: 2.10 },                   // ประตูทางเข้า 0.9 × 2.1 ผนัง Z=0 ชิดขวา
+  bath:    { x0: 1.90, x1: 3.40, z0: 0.00, z1: 2.00,           // ห้องน้ำ 1.5 × 2.0 มุมซ้ายติดทางเข้า (รวมผนังกั้น 0.1)
+             doorZ0: 1.05, doorZ1: 1.75, doorH: 2.10 },        // ประตูบานเลื่อน 0.7 หันออกทางเดิน
+  pantry:  { x0: 0.00, x1: 0.60, z0: 1.00, z1: 2.60, h: 0.85 },  // เคาน์เตอร์ 1.6 × 0.6 × 0.85 ผนังขวา ถัดจากประตู
+  glass:   { x0: 0.50, x1: 2.90, h: 2.30 },                    // ประตูกระจกบานเลื่อน 2.4 × 2.3 ผนัง Z=7
+  balcony: { depth: 1.2 },
+  ac:      { w: 0.85, h: 0.27, d: 0.21, cx: 2.40, y0: 2.31 },  // แอร์ เหนือหน้าต่างฝั่งซ้าย
+};
+
+// =====================================================================
+// เฟอร์นิเจอร์ — แก้/เพิ่ม/ลบที่ array นี้
+// x, z  = จุดกึ่งกลางบนพื้น (ม.)
+// w, d, h = กว้างตามแกน X · ลึกตามแกน Z · สูง (ก่อนหมุน)
+// rotation = องศา หมุนรอบแกนตั้ง (ทวนเข็มนาฬิกาเมื่อมองจากบน)
+// =====================================================================
+const furniture = [
+  // { name: 'เตียง 5 ฟุต', w: 1.5, d: 2.0, h: 0.45, x: 2.6, z: 5.9, rotation: 0, color: '#d8d2c8' },
+];
+
+// พื้นที่ที่เฟอร์นิเจอร์ไม่ควรทับ
+const ZONES = [
+  { name: 'ห้องน้ำ',        x0: FIXED.bath.x0,   x1: FIXED.bath.x1,   z0: FIXED.bath.z0,   z1: FIXED.bath.z1 },
+  { name: 'เคาน์เตอร์ครัว', x0: FIXED.pantry.x0, x1: FIXED.pantry.x1, z0: FIXED.pantry.z0, z1: FIXED.pantry.z1 },
+  { name: 'รัศมีเปิดประตู', x0: FIXED.entry.x0,  x1: FIXED.entry.x1,  z0: 0,               z1: FIXED.entry.x1 - FIXED.entry.x0 },
+];
+
+// =====================================================================
+// Scene
+// =====================================================================
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
+labelRenderer.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xe9eef1);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.05, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 0.3;
+controls.maxDistance = 30;
+
+// ---------- lights ----------
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8c9b2, 1.35));
+
+const sun = new THREE.DirectionalLight(0xfff0da, 2.4);
+sun.position.set(0.2, 6.5, 13.5);   // แดดเข้าจากฝั่งระเบียง
+sun.target.position.set(1.7, 0, 3.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+scene.add(sun, sun.target);
+
+for (const z of [2.9, 5.2]) {
+  const p = new THREE.PointLight(0xfff4e6, 3.2, 0, 2);
+  p.position.set(1.7, 2.45, z);
+  scene.add(p);
+}
+
+// ---------- helpers ----------
+const rand = (seed) => () => {
+  seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
+// กล่องจากขอบ min/max (ใช้ได้ทั้งพิกัดโลกและพิกัดภายใน group)
+function box(mat, x0, x1, y0, y1, z0, z1, { cast = true, receive = true } = {}) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mat);
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  m.castShadow = cast;
+  m.receiveShadow = receive;
+  return m;
+}
+
+function canvasTexture(size, draw, repeatX, repeatY) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  draw(c.getContext('2d'), size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.repeat.set(repeatX, repeatY);
+  return tex;
+}
+
+// ลามิเนตโทนไม้อ่อน: แผ่น 0.2 × 1.2 ม. วางตามแนวลึก (Z), texture 1 แผ่น = 2.4 × 2.4 ม.
+function laminateTexture() {
+  const TILE = 2.4, COLS = 12;
+  return canvasTexture(2048, (g, S) => {
+    const r = rand(11), cw = S / COLS, half = S / 2;
+    const shade = () => `hsl(${32 + r() * 6}, ${30 + r() * 10}%, ${71 + r() * 7}%)`;
+    for (let i = 0; i < COLS; i++) {
+      const x = i * cw, j = r() * half;
+      g.fillStyle = shade(); g.fillRect(x, 0, cw, S);
+      g.fillStyle = shade(); g.fillRect(x, j, cw, half);
+      for (let k = 0; k < 24; k++) {
+        const gx = x + 4 + r() * (cw - 8), amp = 1.5 + r() * 3, ph = r() * 6.28;
+        g.strokeStyle = `rgba(115, 82, 50, ${0.04 + r() * 0.07})`;
+        g.lineWidth = 0.6 + r() * 1.6;
+        g.beginPath();
+        for (let y = 0; y <= S; y += 32) g.lineTo(gx + Math.sin((y / S) * Math.PI * 6 + ph) * amp, y);
+        g.stroke();
+      }
+      g.fillStyle = 'rgba(95, 68, 42, 0.45)';
+      g.fillRect(x, j - 1, cw, 2);
+      g.fillRect(x, j + half - 1, cw, 2);
+      g.fillRect(x, 0, 2, S);
+    }
+  }, ROOM.W / TILE, ROOM.D / TILE);
+}
+
+// กระเบื้องห้องน้ำ 0.3 × 0.3 ม.
+function tileTexture(w, d) {
+  return canvasTexture(512, (g, S) => {
+    g.fillStyle = '#dcdedd'; g.fillRect(0, 0, S, S);
+    g.fillStyle = '#b6babb';
+    for (const p of [0, S / 2]) { g.fillRect(p, 0, 3, S); g.fillRect(0, p, S, 3); }
+  }, w / 0.6, d / 0.6);
+}
+
+// ---------- materials ----------
+const MAT = {
+  wall:     new THREE.MeshStandardMaterial({ color: 0xf3eee2, roughness: 0.92 }),   // ขาวนวล
+  ceiling:  new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 }),
+  floor:    new THREE.MeshStandardMaterial({ map: laminateTexture(), roughness: 0.62 }),
+  tile:     new THREE.MeshStandardMaterial({ map: tileTexture(1.4, 1.9), roughness: 0.45 }),
+  slab:     new THREE.MeshStandardMaterial({ color: 0xc9c6c0, roughness: 1 }),
+  balcony:  new THREE.MeshStandardMaterial({ color: 0xbdb8b0, roughness: 0.9 }),
+  door:     new THREE.MeshStandardMaterial({ color: 0x8c6b4f, roughness: 0.6 }),
+  bathDoor: new THREE.MeshStandardMaterial({ color: 0xf6f5f2, roughness: 0.5 }),
+  frame:    new THREE.MeshStandardMaterial({ color: 0x6a7075, roughness: 0.45, metalness: 0.25 }),
+  metal:    new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.35, metalness: 0.3 }),
+  glass:    new THREE.MeshStandardMaterial({ color: 0xcfe6ef, roughness: 0.05, transparent: true, opacity: 0.2, depthWrite: false }),
+  cabinet:  new THREE.MeshStandardMaterial({ color: 0xebe6dc, roughness: 0.7 }),
+  counter:  new THREE.MeshStandardMaterial({ color: 0x8f8d89, roughness: 0.35 }),
+  black:    new THREE.MeshStandardMaterial({ color: 0x1c1d1f, roughness: 0.2 }),
+  ac:       new THREE.MeshStandardMaterial({ color: 0xfbfbfa, roughness: 0.5 }),
+  groove:   new THREE.MeshStandardMaterial({ color: 0xa9a399, roughness: 0.8 }),
+};
+const HIDDEN = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }); // มองไม่เห็นแต่ยังทอดเงา
+
+// =====================================================================
+// ผนัง: ประกอบจากกล่องรอบช่องเปิด
+// พิกัดภายใน: u = ตามแนวผนัง, v = สูง, z = ความหนา 0..WALL
+// =====================================================================
+function buildWall(len, openings = []) {
+  const t = ROOM.WALL, H = ROOM.H, g = new THREE.Group();
+  const seg = (u0, u1, v0, v1) => {
+    if (u1 - u0 > 1e-4 && v1 - v0 > 1e-4) g.add(box(MAT.wall, u0, u1, v0, v1, 0, t));
+  };
+  let cur = 0;
+  for (const o of [...openings].sort((a, b) => a.u0 - b.u0)) {
+    seg(cur, o.u0, 0, H);        // ช่วงผนังก่อนช่องเปิด
+    seg(o.u0, o.u1, o.v1, H);    // ทับหลัง
+    seg(o.u0, o.u1, 0, o.v0 || 0); // ใต้ขอบ (ถ้ามี)
+    cur = o.u1;
+  }
+  seg(cur, len, 0, H);
+  return g;
+}
+
+const { W, D, H, WALL: T } = ROOM;
+const Y_AXIS_ROT = -Math.PI / 2; // หมุนให้ u ของผนังวิ่งตามแกน Z
+
+// --- ผนังทางเข้า (Z=0) + ประตู ---
+const wallFront = buildWall(W + 2 * T, [{ u0: FIXED.entry.x0 + T, u1: FIXED.entry.x1 + T, v1: FIXED.entry.h }]);
+wallFront.position.set(-T, 0, -T);
+{
+  const u0 = FIXED.entry.x0 + T, u1 = FIXED.entry.x1 + T;
+  wallFront.add(box(MAT.door, u0 + 0.005, u1 - 0.005, 0.005, FIXED.entry.h - 0.005, T / 2 - 0.02, T / 2 + 0.02));
+  // มือจับ (ด้านใน, ฝั่งตรงข้ามบานพับ)
+  wallFront.add(box(MAT.metal, u1 - 0.14, u1 - 0.06, 1.0, 1.03, T + 0.02, T + 0.07));
+}
+
+// --- ผนังระเบียง (Z=7) + ประตูกระจก + แอร์ ---
+const wallBack = buildWall(W + 2 * T, [{ u0: FIXED.glass.x0 + T, u1: FIXED.glass.x1 + T, v1: FIXED.glass.h }]);
+wallBack.position.set(-T, 0, D);
+{
+  const a = FIXED.glass.x0 + T, b = FIXED.glass.x1 + T, gh = FIXED.glass.h, p = 0.05;
+  // วงกบ
+  wallBack.add(box(MAT.frame, a, b, gh - p, gh, 0, T));
+  wallBack.add(box(MAT.frame, a, a + p, 0, gh, 0, T));
+  wallBack.add(box(MAT.frame, b - p, b, 0, gh, 0, T));
+  wallBack.add(box(MAT.frame, a, b, 0, 0.03, 0, T));
+  // บานเลื่อน 2 บาน วางคนละราง ซ้อนกัน 3 ซม.
+  const inner = b - a - 2 * p, pw = inner / 2 + 0.015, v0 = 0.03, v1 = gh - p, q = 0.045;
+  const sash = (u0, u1, z) => {
+    wallBack.add(box(MAT.frame, u0, u1, v1 - q, v1, z - 0.015, z + 0.015));
+    wallBack.add(box(MAT.frame, u0, u1, v0, v0 + q, z - 0.015, z + 0.015));
+    wallBack.add(box(MAT.frame, u0, u0 + q, v0, v1, z - 0.015, z + 0.015));
+    wallBack.add(box(MAT.frame, u1 - q, u1, v0, v1, z - 0.015, z + 0.015));
+    const pane = box(MAT.glass, u0 + q, u1 - q, v0 + q, v1 - q, z - 0.004, z + 0.004, { cast: false, receive: false });
+    pane.renderOrder = 2;
+    wallBack.add(pane);
+  };
+  sash(a + p, a + p + pw, T * 0.3);
+  sash(b - p - pw, b - p, T * 0.7);
+
+  // แอร์ติดผนัง (ยื่นเข้าในห้อง = z ติดลบ)
+  const ac = FIXED.ac, u = ac.cx + T;
+  wallBack.add(box(MAT.ac, u - ac.w / 2, u + ac.w / 2, ac.y0, ac.y0 + ac.h, -ac.d, 0));
+  wallBack.add(box(MAT.groove, u - ac.w / 2 + 0.04, u + ac.w / 2 - 0.04, ac.y0 + 0.02, ac.y0 + 0.045, -ac.d - 0.002, -ac.d + 0.02, { cast: false }));
+}
+
+// --- ผนังขวา (X=0) และซ้าย (X=3.4) ---
+const wallRight = buildWall(D);
+wallRight.rotation.y = Y_AXIS_ROT;           // ความหนาวิ่งไปทาง -X
+wallRight.position.set(0, 0, 0);
+const wallLeft = buildWall(D);
+wallLeft.rotation.y = Y_AXIS_ROT;
+wallLeft.position.set(W + T, 0, 0);
+
+scene.add(wallFront, wallBack, wallRight, wallLeft);
+
+// ผนังที่ซ่อนอัตโนมัติเมื่อกล้องอยู่ด้านนอกฝั่งนั้น
+const CUTAWAY = [
+  { group: wallFront, outside: (c) => c.z < 0 },
+  { group: wallBack,  outside: (c) => c.z > D },
+  { group: wallRight, outside: (c) => c.x < 0 },
+  { group: wallLeft,  outside: (c) => c.x > W },
+];
+
+// =====================================================================
+// พื้น / เพดาน / โครงสร้าง
+// =====================================================================
+scene.add(box(MAT.slab, -T, W + T, -0.2, -0.005, -T, D + T));
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), MAT.floor);
+floor.rotation.x = -Math.PI / 2;
+floor.position.set(W / 2, 0, D / 2);
+floor.receiveShadow = true;
+scene.add(floor);
+
+const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(W, D), MAT.ceiling);
+ceiling.rotation.x = Math.PI / 2;            // หันหน้าลง — มองจากบนจะถูก cull อัตโนมัติ
+ceiling.position.set(W / 2, H, D / 2);
+ceiling.castShadow = true;
+scene.add(ceiling);
+for (const p of [2.9, 5.2]) {                // ดาวน์ไลท์
+  const dl = new THREE.Mesh(new THREE.CircleGeometry(0.075, 32), new THREE.MeshBasicMaterial({ color: 0xfffaf0 }));
+  dl.rotation.x = Math.PI / 2;
+  dl.position.set(1.7, H - 0.002, p);
+  ceiling.parent.add(dl);
+  dl.userData.ceiling = true;
+}
+
+// =====================================================================
+// ห้องน้ำ
+// =====================================================================
+{
+  const b = FIXED.bath;
+  // ผนังกั้นแนวขวาง (ขนานแกน X) ที่ Z = 1.9..2.0
+  const wA = buildWall(b.x1 - b.x0);
+  wA.position.set(b.x0, 0, b.z1 - T);
+  // ผนังกั้นแนวยาว (ขนานแกน Z) ที่ X = 1.9..2.0 พร้อมช่องประตูบานเลื่อน
+  const wB = buildWall(b.z1 - T, [{ u0: b.doorZ0, u1: b.doorZ1, v1: b.doorH }]);
+  wB.rotation.y = Y_AXIS_ROT;
+  wB.position.set(b.x0 + T, 0, 0);
+  scene.add(wA, wB);
+
+  const tile = new THREE.Mesh(new THREE.PlaneGeometry(b.x1 - b.x0 - T, b.z1 - T), MAT.tile);
+  tile.rotation.x = -Math.PI / 2;
+  tile.position.set((b.x0 + T + b.x1) / 2, 0.003, (b.z1 - T) / 2);
+  tile.receiveShadow = true;
+  scene.add(tile);
+
+  // บานเลื่อน ติดฝั่งทางเดิน + รางบน
+  const x = b.x0 - 0.02;
+  scene.add(box(MAT.bathDoor, x - 0.03, x, 0.01, b.doorH + 0.02, b.doorZ0 - 0.02, b.doorZ1 + 0.02));
+  scene.add(box(MAT.metal, x - 0.035, x, b.doorH + 0.03, b.doorH + 0.07, b.doorZ0 - 0.05, b.doorZ1 + 0.72));
+  scene.add(box(MAT.metal, x - 0.05, x - 0.03, 0.85, 1.25, b.doorZ1 - 0.08, b.doorZ1 - 0.06));
+}
+
+// =====================================================================
+// ครัว pantry
+// =====================================================================
+{
+  const p = FIXED.pantry, top = 0.035, len = p.z1 - p.z0;
+  scene.add(box(MAT.cabinet, p.x0, p.x1 - 0.02, 0.1, p.h - top, p.z0, p.z1));             // ตู้
+  scene.add(box(MAT.groove, p.x0, p.x1 - 0.07, 0, 0.1, p.z0, p.z1));                      // ฐานเว้า
+  scene.add(box(MAT.counter, p.x0, p.x1, p.h - top, p.h, p.z0, p.z1));                    // ท็อป
+  for (let i = 1; i < 4; i++) {                                                             // ร่องบานตู้ 4 บาน
+    const z = p.z0 + (len / 4) * i;
+    scene.add(box(MAT.groove, p.x1 - 0.02, p.x1 - 0.018, 0.1, p.h - top, z - 0.002, z + 0.002, { cast: false }));
+  }
+  // ซิงก์ + ก๊อก
+  scene.add(box(MAT.metal, 0.1, 0.5, p.h - 0.001, p.h + 0.002, 2.0, 2.45, { cast: false }));
+  scene.add(box(MAT.metal, 0.04, 0.07, p.h, p.h + 0.3, 2.21, 2.24));
+  scene.add(box(MAT.metal, 0.04, 0.22, p.h + 0.28, p.h + 0.3, 2.21, 2.24));
+  // เตาไฟฟ้า 1 หัว
+  scene.add(box(MAT.black, 0.12, 0.48, p.h, p.h + 0.006, 1.2, 1.52, { cast: false }));
+}
+
+// =====================================================================
+// ระเบียง (นอกห้อง ไม่นับพื้นที่)
+// =====================================================================
+{
+  const z0 = D + T, z1 = z0 + FIXED.balcony.depth, x0 = -T, x1 = W + T, rh = 1.1, y0 = -0.03;
+  scene.add(box(MAT.balcony, x0, x1, -0.2, y0, z0, z1));
+  const rail = (ax0, ax1, az0, az1) => {
+    const pane = box(MAT.glass, ax0, ax1, y0, rh - 0.05, az0, az1, { cast: false, receive: false });
+    pane.renderOrder = 2;
+    scene.add(pane);
+    scene.add(box(MAT.frame, ax0, ax1, rh - 0.05, rh, az0 - 0.01, az1 + 0.01));
+  };
+  rail(x0, x1, z1 - 0.03, z1);
+  rail(x0, x0 + 0.03, z0, z1);
+  rail(x1 - 0.03, x1, z0, z1);
+}
+
+// =====================================================================
+// ป้ายชื่อ / กริด / เส้นรัศมีประตู
+// =====================================================================
+const labels = new THREE.Group();
+const addLabel = (text, x, y, z) => {
+  const el = document.createElement('div');
+  el.className = 'tag';
+  el.textContent = text;
+  const o = new CSS2DObject(el);
+  o.position.set(x, y, z);
+  labels.add(o);
+};
+addLabel('ประตูทางเข้า', 0.55, 2.3, 0);
+addLabel('ห้องน้ำ 1.5×2.0', 2.7, 1.0, 0.95);
+addLabel('Pantry 1.6 ม.', 0.3, 1.15, 1.8);
+addLabel('แอร์', FIXED.ac.cx, 2.2, D - 0.15);
+addLabel('ระเบียง 1.2 ม.', W / 2, 0.3, D + T + 0.6);
+scene.add(labels);
+
+// เส้นรัศมีประตู (บานพับฝั่ง X=0.1)
+{
+  const hx = FIXED.entry.x0, r = FIXED.entry.x1 - FIXED.entry.x0, pts = [];
+  for (let i = 0; i <= 32; i++) {
+    const a = (i / 32) * Math.PI / 2;
+    pts.push(new THREE.Vector3(hx + r * Math.cos(a), 0.004, r * Math.sin(a)));
+  }
+  pts.push(new THREE.Vector3(hx, 0.004, 0));
+  const arc = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineDashedMaterial({ color: 0x7d858c, dashSize: 0.05, gapSize: 0.035 }));
+  arc.computeLineDistances();
+  scene.add(arc);
+}
+
+const grid = new THREE.Group();
+{
+  const minor = [], major = [];
+  for (let x = 0; x <= W + 1e-6; x += 0.5) (Math.abs(x % 1) < 1e-6 ? major : minor).push(x, 0.006, 0, x, 0.006, D);
+  for (let z = 0; z <= D + 1e-6; z += 0.5) (Math.abs(z % 1) < 1e-6 ? major : minor).push(0, 0.006, z, W, 0.006, z);
+  const lines = (arr, opacity) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x2c3136, transparent: true, opacity }));
+  };
+  grid.add(lines(minor, 0.14), lines(major, 0.32));
+  grid.visible = false;
+  scene.add(grid);
+}
+
+// =====================================================================
+// เฟอร์นิเจอร์
+// =====================================================================
+const furnitureGroup = new THREE.Group();
+scene.add(furnitureGroup);
+
+function footprint(f) {
+  const a = THREE.MathUtils.degToRad(f.rotation || 0), c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a));
+  const hx = (f.w * c + f.d * s) / 2, hz = (f.w * s + f.d * c) / 2;
+  return { x0: f.x - hx, x1: f.x + hx, z0: f.z - hz, z1: f.z + hz };
+}
+
+function checkFurniture(f) {
+  const fp = footprint(f), e = 1e-3, warns = [];
+  if (fp.x0 < -e || fp.x1 > W + e || fp.z0 < -e || fp.z1 > D + e) warns.push('ล้นขอบห้อง');
+  if (f.h > H) warns.push('สูงเกินเพดาน');
+  for (const z of ZONES) {
+    if (fp.x0 < z.x1 - e && fp.x1 > z.x0 + e && fp.z0 < z.z1 - e && fp.z1 > z.z0 + e) warns.push(`ทับ${z.name}`);
+  }
+  return warns;
+}
+
+function renderFurniture() {
+  furnitureGroup.traverse((o) => { o.geometry?.dispose(); o.material?.dispose?.(); });
+  furnitureGroup.clear();
+  const list = document.getElementById('fList');
+  list.innerHTML = '';
+  document.getElementById('fCount').textContent = furniture.length ? `(${furniture.length})` : '';
+
+  if (!furniture.length) {
+    list.innerHTML = '<li class="empty">ยังไม่มี — เพิ่มใน array <code>furniture</code></li>';
+    return;
+  }
+  for (const f of furniture) {
+    const geo = new THREE.BoxGeometry(f.w, f.h, f.d);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: f.color, roughness: 0.8 }));
+    mesh.position.set(f.x, f.h / 2, f.z);
+    mesh.rotation.y = THREE.MathUtils.degToRad(f.rotation || 0);
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({ color: 0x2c3136, transparent: true, opacity: 0.35 })));
+    furnitureGroup.add(mesh);
+
+    const warns = checkFurniture(f);
+    if (warns.length) console.warn(`[furniture] ${f.name}: ${warns.join(', ')}`);
+    const li = document.createElement('li');
+    li.innerHTML = `${f.name}<br><span class="dim">${f.w.toFixed(2)} × ${f.d.toFixed(2)} × ${f.h.toFixed(2)} ม. · (${f.x.toFixed(2)}, ${f.z.toFixed(2)})${f.rotation ? ` · ${f.rotation}°` : ''}</span>`
+      + (warns.length ? `<br><span class="warn">⚠ ${warns.join(' · ')}</span>` : '');
+    list.appendChild(li);
+  }
+}
+renderFurniture();
+
+// แก้จาก console ได้: DreamRoom.furniture.push({...}); DreamRoom.render();
+window.DreamRoom = { ROOM, FIXED, furniture, render: renderFurniture };
+
+// =====================================================================
+// มุมมอง + การซ่อนผนัง
+// =====================================================================
+const VIEWS = {
+  overview: { pos: [-2.8, 6.4, -3.6], target: [1.7, 0.5, 3.7] },
+  top:      { pos: [1.7, 14.5, 3.699], target: [1.7, 0, 3.7] },   // ประตูอยู่ล่าง ระเบียงอยู่บนจอ
+  entry:    { pos: [0.55, 1.6, 0.35], target: [2.0, 1.2, 6.5] },
+  window:   { pos: [1.7, 1.6, 6.6], target: [1.3, 1.0, 0.8] },
+};
+let tween = null;
+function goTo(name, instant = false) {
+  const v = VIEWS[name];
+  const to = { pos: new THREE.Vector3(...v.pos), target: new THREE.Vector3(...v.target) };
+  if (instant) { camera.position.copy(to.pos); controls.target.copy(to.target); return; }
+  tween = { from: { pos: camera.position.clone(), target: controls.target.clone() }, to, t0: performance.now(), dur: 800 };
+}
+document.getElementById('views').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-view]');
+  if (!btn) return;
+  document.querySelectorAll('#views button').forEach((b) => b.classList.toggle('on', b === btn));
+  goTo(btn.dataset.view);
+});
+goTo('overview', true);
+
+const panel = document.getElementById('panel'), moreBtn = document.getElementById('more-btn');
+moreBtn.addEventListener('click', () => {
+  const open = panel.classList.toggle('open');
+  moreBtn.setAttribute('aria-expanded', open);
+  moreBtn.textContent = open ? 'ซ่อน' : 'ตัวเลือก';
+});
+
+const toggles = {
+  cut: document.getElementById('tCut'),
+  ceil: document.getElementById('tCeil'),
+};
+document.getElementById('tGrid').addEventListener('change', (e) => { grid.visible = e.target.checked; });
+document.getElementById('tLabels').addEventListener('change', (e) => {
+  labels.visible = e.target.checked;
+  labels.children.forEach((o) => { o.element.style.display = e.target.checked ? '' : 'none'; });
+});
+toggles.ceil.addEventListener('change', () => {
+  ceiling.visible = toggles.ceil.checked;
+  scene.children.forEach((o) => { if (o.userData.ceiling) o.visible = toggles.ceil.checked; });
+});
+
+function setHidden(group, hidden) {
+  if (group.userData.hidden === hidden) return;
+  group.userData.hidden = hidden;
+  group.traverse((o) => {
+    if (!o.isMesh) return;
+    o.userData.mat ??= o.material;
+    o.material = hidden ? HIDDEN : o.userData.mat;
+  });
+}
+function updateCutaway() {
+  const c = camera.position, on = toggles.cut.checked;
+  for (const w of CUTAWAY) setHidden(w.group, on && w.outside(c));
+}
+
+// =====================================================================
+// อ่านพิกัดบนพื้น
+// =====================================================================
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const coordEl = document.getElementById('coord');
+const marker = new THREE.Mesh(new THREE.RingGeometry(0.035, 0.05, 32),
+  new THREE.MeshBasicMaterial({ color: 0xb0703c, depthTest: false }));
+marker.rotation.x = -Math.PI / 2;
+marker.renderOrder = 5;
+marker.visible = false;
+scene.add(marker);
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObject(floor)[0];
+  if (hit) {
+    const { x, z } = hit.point;
+    coordEl.textContent = `X ${x.toFixed(2)} · Z ${z.toFixed(2)} ม.`;
+    marker.position.set(x, 0.01, z);
+    marker.visible = true;
+  } else {
+    coordEl.textContent = 'ชี้บนพื้นเพื่อดูพิกัด';
+    marker.visible = false;
+  }
+});
+
+// =====================================================================
+// loop
+// =====================================================================
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+});
+
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+renderer.setAnimationLoop(() => {
+  if (tween) {
+    const t = Math.min(1, (performance.now() - tween.t0) / tween.dur), k = ease(t);
+    camera.position.lerpVectors(tween.from.pos, tween.to.pos, k);
+    controls.target.lerpVectors(tween.from.target, tween.to.target, k);
+    if (t === 1) tween = null;
+  }
+  controls.update();
+  updateCutaway();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
