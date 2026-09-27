@@ -59,7 +59,7 @@
     color: var(--muted); margin-bottom: 6px;
   }
   .seg { display: grid; gap: 6px; }
-  .seg.three { grid-template-columns: repeat(3, 1fr); }
+  .seg.four { grid-template-columns: repeat(4, 1fr); }
   .seg.two { grid-template-columns: 1fr 1fr; margin-top: 6px; }
   .seg button { font-size: 13px; padding: 6px 4px; }
   .seg button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
@@ -178,10 +178,11 @@
 
   <section>
     <div class="label">มุมมอง</div>
-    <div class="seg three" id="views">
+    <div class="seg four" id="views">
       <button type="button" data-view="top">มุมบน</button>
       <button type="button" data-view="entry">ยืนที่ประตู</button>
       <button type="button" data-view="orbit" class="on">รอบห้อง</button>
+      <button type="button" data-view="bath">ห้องน้ำ</button>
     </div>
     <div class="seg two" id="light">
       <button type="button" data-mode="day" class="on">กลางวัน</button>
@@ -383,7 +384,7 @@ const downlights = DOWNLIGHTS.map(([x, z]) => {
   return p;
 });
 const bathLight = new THREE.PointLight(0xf4f6ff, 0, 0, 2);
-bathLight.position.set(0.95, 2.3, 5.4);
+bathLight.position.set(0.95, 2.3, (FIXED.bath.z0 + FIXED.bath.z1) / 2);
 const balconyLight = new THREE.PointLight(0xffd9a8, 0, 0, 2);
 balconyLight.position.set((FIXED.bath.x1 + W) / 2, 2.3, D + 0.5);
 scene.add(bathLight, balconyLight);
@@ -499,7 +500,7 @@ const MAT = {
   frame:    new THREE.MeshStandardMaterial({ color: 0xe9eae8, roughness: 0.4, metalness: 0.2 }),
   metal:    new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.35, metalness: 0.3 }),
   glass:    new THREE.MeshStandardMaterial({ color: 0xcfe6ef, roughness: 0.05, transparent: true, opacity: 0.2, depthWrite: false }),
-  mirror:   new THREE.MeshStandardMaterial({ color: 0xd9e2e6, roughness: 0.05, metalness: 0.8, envMap }),
+  mirror:   new THREE.MeshStandardMaterial({ color: 0xe4ebee, roughness: 0.04, metalness: 0.35, envMap, envMapIntensity: 1.2 }),
   wood:     new THREE.MeshStandardMaterial({ color: 0x4a342a, roughness: 0.55 }),              // บิวท์อินไม้โทนเข้ม
   woodLight: new THREE.MeshStandardMaterial({ color: 0xd2904f, roughness: 0.55 }),             // บานตู้ลายไม้ส้ม
   white:    new THREE.MeshStandardMaterial({ color: 0xf4f2ee, roughness: 0.5 }),
@@ -624,10 +625,10 @@ const wallBalc = wallX(B.x1, W + T, D, 1, [{ a0: F.slider.x0, a1: F.slider.x1, h
 // --- ห้องน้ำ: ผนังหน้า (หันเข้าห้อง) · ผนังข้าง (ประตูเปิดจากซุ้ม) · ผนังนอกอาคาร ---
 const bathFront = wallX(0, B.x1, B.z0, 1);
 const bathSide = wallZ(B.z0, BALCONY_Z1, B.x1, -1, [{ a0: B.doorZ0, a1: B.doorZ1, h: B.doorH }]);
-{
-  const u0 = B.doorZ0 - B.z0, u1 = B.doorZ1 - B.z0;
-  bathSide.add(box(MAT.door, u0 + 0.005, u1 - 0.005, 0.005, B.doorH - 0.005, T / 2 - 0.02, T / 2 + 0.02));
-  bathSide.add(box(MAT.metal, u0 + 0.06, u0 + 0.12, 1.0, 1.04, -0.08, T / 2 - 0.02));
+{ // ประตูห้องน้ำ: เปิดเข้าด้านใน พิงผนังหน้า (บานพับฝั่ง doorZ0)
+  const w = B.doorZ1 - B.doorZ0, ix = B.x1 - T, z = B.z0 + T;
+  scene.add(box(MAT.door, ix - w + 0.02, ix, 0.005, B.doorH - 0.005, z + 0.01, z + 0.05));
+  scene.add(box(MAT.metal, ix - w + 0.06, ix - w + 0.12, 1.0, 1.04, z + 0.05, z + 0.11));
 }
 const bathBack = wallX(-T, B.x1, B.z1, 1);
 
@@ -673,11 +674,29 @@ const ceiling = new THREE.Group();
   bc.rotation.x = Math.PI / 2;
   bc.position.set((B.x1 - T) / 2, 2.45, (B.z0 + T + B.z1) / 2);
   ceiling.add(bc);
+  { // ฝ้าทีบาร์ 60×60 + ดาวน์ไลท์ในห้องน้ำ (หันลง — มองจากบนไม่เห็น)
+    const bx = B.x1 - T, bz0 = B.z0 + T, bz1 = B.z1, gm = new THREE.MeshStandardMaterial({ color: 0xaeb2b4, roughness: 0.6 });
+    const strip = (w, d, x, z) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), gm);
+      m.rotation.x = Math.PI / 2;
+      m.position.set(x, 2.448, z);
+      ceiling.add(m);
+    };
+    for (let x = 0.6; x < bx - 0.05; x += 0.6) strip(0.025, bz1 - bz0, x, (bz0 + bz1) / 2);
+    for (let z = bz0 + 0.6; z < bz1 - 0.05; z += 0.6) strip(bx, 0.025, bx / 2, z);
+    const dl = new THREE.Mesh(new THREE.CircleGeometry(0.06, 24), MAT.downlight);
+    dl.rotation.x = Math.PI / 2;
+    dl.position.set(bx / 2, 2.447, (bz0 + bz1) / 2);
+    ceiling.add(dl);
+  }
   scene.add(ceiling);
 }
 
-{ // ห้องน้ำภายใน X 0–1.9 · Z 4.2–6.6: อ่าง + ชักโครก ชิดผนัง X=0 · ผนังเตี้ยกั้นโซนอาบน้ำ
-  const ix = B.x1 - T, z0 = B.z0 + T, z1 = B.z1, showerZ = z0 + 1.15;
+{ // ห้องน้ำภายใน X 0–1.9 · Z 4.4–6.2 (จากรูป): พื้นกระเบื้องเทา 30×30 · ผนังล่างเทา + เส้นโมเสก + ผนังบนขาว
+  // ชิดผนัง X=0 เรียงจากประตู: เคาน์เตอร์อ่าง (ท็อปแกรนิตดำ มุมตัด) → ชักโครก → ผนังเตี้ยกั้น → โซนอาบน้ำ (เครื่องทำน้ำอุ่น + หน้าต่าง)
+  const ix = B.x1 - T, z0 = B.z0 + T, z1 = B.z1, showerZ = z0 + 1.15, CEIL = 2.45;
+
+  // --- พื้น ---
   const tile = new THREE.Mesh(new THREE.PlaneGeometry(ix, showerZ - z0), MAT.tile);
   tile.rotation.x = -Math.PI / 2;
   tile.position.set(ix / 2, 0.003, (z0 + showerZ) / 2);
@@ -686,18 +705,128 @@ const ceiling = new THREE.Group();
   shower.position.set(ix / 2, 0.003, (showerZ + z1) / 2);
   tile.receiveShadow = shower.receiveShadow = true;
   scene.add(tile, shower);
+  const dz = (showerZ + z1) / 2;
+  scene.add(box(MAT.metal, 0.55, 0.67, 0.003, 0.006, dz - 0.06, dz + 0.06, { cast: false }));   // ท่อระบายน้ำ
 
-  scene.add(box(MAT.bathWall, 0, 0.95, 0, 1.3, showerZ - 0.1, showerZ));               // ผนังเตี้ยกั้นอาบน้ำ
-  scene.add(box(MAT.tile, 0, 0.5, 0.62, 0.78, z0, z0 + 0.6));                           // เคาน์เตอร์อ่าง
-  scene.add(box(MAT.black, 0, 0.52, 0.78, 0.81, z0, z0 + 0.62));
-  scene.add(box(MAT.porcelain, 0.1, 0.44, 0.81, 0.85, z0 + 0.1, z0 + 0.5));           // อ่าง
-  scene.add(box(MAT.metal, 0.03, 0.06, 0.81, 1.0, z0 + 0.28, z0 + 0.32));               // ก๊อก
-  scene.add(box(MAT.mirror, 0.005, 0.015, 1.2, 1.8, z0 + 0.05, z0 + 0.55));              // กระจก
-  scene.add(box(MAT.black, 0, 0.24, 0.78, 0.81, z0 + 0.62, showerZ - 0.1));             // หิ้งหลังชักโครก
-  scene.add(box(MAT.porcelain, 0, 0.2, 0.4, 0.78, z0 + 0.62, z0 + 1.02));                   // ชักโครก: ถังพักน้ำ
-  scene.add(box(MAT.porcelain, 0.15, 0.62, 0, 0.4, z0 + 0.66, z0 + 0.98));                // โถ
-  scene.add(box(MAT.porcelain, 0.18, 0.66, 0.4, 0.43, z0 + 0.64, z0 + 1.0));             // ฝา
-  scene.add(box(MAT.black, 0, 0.08, 1.4, 1.78, showerZ + 0.05, showerZ + 0.3));           // เครื่องทำน้ำอุ่น
+  // --- กระเบื้องผนัง: แผ่น 60×30 · ล่างเทา (สูง 1.0) · เส้นโมเสก · บนขาวครีม ---
+  const tileTex = (fill, grout) => canvasTexture(512, (g, S) => {
+    g.fillStyle = fill; g.fillRect(0, 0, S, S);
+    g.fillStyle = 'rgba(0, 0, 0, 0.03)';
+    for (let y = 0; y < S; y += 7) g.fillRect(0, y, S, 2);                         // ลายเส้นผิวกระเบื้อง
+    g.fillStyle = grout;
+    g.fillRect(0, 0, S, 3); g.fillRect(0, S / 2, S, 3); g.fillRect(0, 0, 3, S);
+  }, 1, 1);
+  const WALL_TEX = {
+    low: tileTex('#a3a6a5', '#8a8d8c'),
+    up: tileTex('#efece5', '#d7d3cb'),
+    mosaic: canvasTexture(256, (g, S) => {
+      const r = rand(9), n = 12, c = S / n, cols = ['#8a6f5a', '#b8b2a8', '#6f6a66', '#d9d4cb', '#a08870', '#4f4b48'];
+      g.fillStyle = '#e8e4dc'; g.fillRect(0, 0, S, S);
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        g.fillStyle = cols[Math.floor(r() * cols.length)];
+        g.fillRect(i * c + 1, j * c + 1, c - 2, c - 2);
+      }
+    }, 1, 1),
+  };
+  const TEX_M = { low: 0.6, up: 0.6, mosaic: 0.3 };        // ขนาดจริงของ texture 1 ชุด (ม.)
+  const tileMat = (kind, w, h) => {
+    const t = WALL_TEX[kind].clone();
+    t.needsUpdate = true;
+    t.repeat.set(w / TEX_M[kind], h / TEX_M[kind]);
+    return new THREE.MeshStandardMaterial({ map: t, roughness: kind === 'mosaic' ? 0.4 : 0.28 });
+  };
+  const subtract = (r, h) => {                             // ตัดช่องเปิดออกจากสี่เหลี่ยม [a0, a1, v0, v1]
+    if (h[0] >= r[1] || h[1] <= r[0] || h[2] >= r[3] || h[3] <= r[2]) return [r];
+    const out = [], a0 = Math.max(r[0], h[0]), a1 = Math.min(r[1], h[1]);
+    if (h[0] > r[0]) out.push([r[0], h[0], r[2], r[3]]);
+    if (h[1] < r[1]) out.push([h[1], r[1], r[2], r[3]]);
+    if (h[2] > r[2]) out.push([a0, a1, r[2], h[2]]);
+    if (h[3] < r[3]) out.push([a0, a1, h[3], r[3]]);
+    return out;
+  };
+  // axis 'x' = ระนาบ x = pos ทอดตาม z · axis 'z' = ระนาบ z = pos ทอดตาม x · n = ทิศที่กระเบื้องหันไป
+  function clad(axis, pos, n, a0, a1, holes = [], top = CEIL) {
+    for (const [kind, v0, v1Raw] of [['low', 0, 1.0], ['mosaic', 1.0, 1.06], ['up', 1.06, top]]) {
+      const v1 = Math.min(v1Raw, top);
+      if (v1 <= v0) continue;
+      let rects = [[a0, a1, v0, v1]];
+      for (const h of holes) rects = rects.flatMap((r) => subtract(r, [h.a0, h.a1, h.v0, h.v1]));
+      for (const [u0, u1, w0, w1] of rects) {
+        if (u1 - u0 < 0.005 || w1 - w0 < 0.005) continue;
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, w1 - w0), tileMat(kind, u1 - u0, w1 - w0));
+        const mid = (u0 + u1) / 2, off = pos + n * 0.004;
+        if (axis === 'x') { m.position.set(off, (w0 + w1) / 2, mid); m.rotation.y = n > 0 ? Math.PI / 2 : -Math.PI / 2; }
+        else { m.position.set(mid, (w0 + w1) / 2, off); m.rotation.y = n > 0 ? 0 : Math.PI; }
+        m.receiveShadow = true;
+        scene.add(m);
+      }
+    }
+  }
+  clad('x', 0, 1, z0, z1, [{ a0: F.bathWin.z0, a1: F.bathWin.z1, v0: F.bathWin.y0, v1: F.bathWin.y1 }]);
+  clad('x', ix, -1, z0, z1, [{ a0: B.doorZ0, a1: B.doorZ1, v0: 0, v1: B.doorH }]);
+  clad('z', z0, 1, 0, ix);
+  clad('z', z1, -1, 0, ix);
+
+  // --- ผนังเตี้ยกั้นโซนอาบน้ำ สูง 1.35 + ขอบบนขาว ---
+  const hwX = 0.95, hwH = 1.35, hz0 = showerZ - 0.1;
+  scene.add(box(MAT.bathWall, 0, hwX, 0, hwH, hz0, showerZ));
+  clad('z', hz0, -1, 0, hwX, [], hwH);
+  clad('z', showerZ, 1, 0, hwX, [], hwH);
+  clad('x', hwX, 1, hz0, showerZ, [], hwH);
+  scene.add(box(MAT.porcelain, 0, hwX + 0.01, hwH, hwH + 0.02, hz0 - 0.01, showerZ + 0.01));
+
+  // --- เคาน์เตอร์อ่าง: ท็อปแกรนิตดำมุมตัด + ขอบกระเบื้องเทา + อ่างรูปไข่ ---
+  const cz0 = z0 + 0.02, cz1 = z0 + 0.62, cd = 0.5;
+  const counterShape = new THREE.Shape([[0, cz0], [cd - 0.12, cz0], [cd, cz0 + 0.12], [cd, cz1], [0, cz1]].map(([x, z]) => new THREE.Vector2(x, z)));
+  const slab = (t, material, topY) => {
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(counterShape, { depth: t, bevelEnabled: false }).rotateX(Math.PI / 2), material);
+    m.position.y = topY;
+    m.castShadow = m.receiveShadow = true;
+    scene.add(m);
+  };
+  const granite = new THREE.MeshStandardMaterial({ color: 0x1e1f21, roughness: 0.15, metalness: 0.1 });
+  slab(0.16, new THREE.MeshStandardMaterial({ color: 0x9c9f9e, roughness: 0.35 }), 0.78);
+  slab(0.03, granite, 0.81);
+  scene.add(box(granite, 0, 0.2, 0.78, 0.81, cz1, hz0));                                   // หิ้งหลังชักโครก
+  const bz = (cz0 + cz1) / 2 + 0.03;
+  const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 40), MAT.porcelain);
+  basin.scale.set(0.72, 1, 1.05);
+  basin.position.set(0.27, 0.83, bz);
+  const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.004, 40), new THREE.MeshStandardMaterial({ color: 0xd9dee2, roughness: 0.15 }));
+  bowl.scale.copy(basin.scale);
+  bowl.position.set(0.27, 0.857, bz);
+  scene.add(basin, bowl);
+  scene.add(box(MAT.metal, 0.05, 0.08, 0.81, 0.97, bz - 0.015, bz + 0.015));             // ก๊อก
+  scene.add(box(MAT.metal, 0.05, 0.16, 0.95, 0.97, bz - 0.012, bz + 0.012));
+  const trap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.24, 12), MAT.metal);   // ท่อน้ำทิ้งใต้อ่าง
+  trap.position.set(0.27, 0.5, bz);
+  scene.add(trap);
+  scene.add(box(MAT.mirror, 0.005, 0.012, 1.15, 1.95, cz0 + 0.03, cz1 - 0.03));          // กระจกไร้กรอบ
+
+  // --- ชักโครก (หันออกจากผนัง X=0) ---
+  const tz = z0 + 0.84;
+  scene.add(box(MAT.porcelain, 0.02, 0.2, 0.4, 0.78, tz - 0.19, tz + 0.19));              // ถังพักน้ำ
+  scene.add(box(MAT.porcelain, 0.01, 0.21, 0.78, 0.8, tz - 0.2, tz + 0.2));
+  scene.add(box(MAT.metal, 0.1, 0.13, 0.8, 0.81, tz - 0.03, tz + 0.03, { cast: false }));
+  const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.3, 32), MAT.porcelain);
+  pedestal.scale.set(1.35, 1, 1);
+  pedestal.position.set(0.33, 0.15, tz);
+  const tBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.13, 0.12, 32), MAT.porcelain);
+  tBowl.scale.set(1.3, 1, 1);
+  tBowl.position.set(0.4, 0.34, tz);
+  const seat = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.022, 10, 32), MAT.porcelain);
+  seat.rotation.x = Math.PI / 2;
+  seat.scale.set(1.3, 1, 1);
+  seat.position.set(0.42, 0.415, tz);
+  for (const m of [pedestal, tBowl, seat]) { m.castShadow = m.receiveShadow = true; scene.add(m); }
+  scene.add(box(MAT.porcelain, 0.2, 0.225, 0.43, 0.86, tz - 0.17, tz + 0.17));            // ฝาเปิดพิงถัง
+  scene.add(box(MAT.metal, 0, 0.03, 0.5, 0.56, tz - 0.27, tz - 0.23));                    // สายฉีดชำระ
+  scene.add(box(MAT.metal, 0.55, 0.68, 0.72, 0.76, hz0 - 0.03, hz0));                     // ที่ใส่กระดาษ
+
+  // --- โซนอาบน้ำ: เครื่องทำน้ำอุ่นสีดำ + ฝักบัว ---
+  scene.add(box(MAT.black, 0, 0.08, 1.4, 1.75, showerZ + 0.08, showerZ + 0.3));
+  scene.add(box(MAT.metal, 0, 0.06, 1.28, 1.32, showerZ + 0.34, showerZ + 0.38));
+  scene.add(box(MAT.black, 0.03, 0.07, 1.2, 1.4, showerZ + 0.34, showerZ + 0.38));
 }
 
 { // บิวท์อิน: ตู้เสื้อผ้าบานขาวถึงฝ้า + โต๊ะเครื่องแป้งกระจก (ชิดผนังทางเข้า)
@@ -1335,10 +1464,12 @@ function fitDistance(dir, target) {
 }
 
 const EYE = { pos: new V((FIXED.entry.x0 + FIXED.entry.x1) / 2, 1.6, 0.35), look: new V(2.7, 1.3, D) };
+const BATH_EYE = { pos: new V(FIXED.bath.x1 + 0.35, 1.6, (FIXED.bath.doorZ0 + FIXED.bath.doorZ1) / 2), look: new V(0.2, 0.85, FIXED.bath.z0 + 1.05) };
 const ORBIT = { dir: new V(-4.5, 5.9, -7.3).normalize(), target: new V(W / 2, 0.8, BALCONY_Z1 / 2) };
 const HINT = {
   top: 'ลากพื้นเพื่อเลื่อน · สกรอลเพื่อซูม · ลากเฟอร์นิเจอร์เพื่อย้าย',
   entry: 'ลากเพื่อหันมอง · ความสูงสายตา 1.6 ม.',
+  bath: 'ยืนที่ประตูห้องน้ำ · ลากเพื่อหันมอง',
   orbit: 'ลากเพื่อหมุน · คลิกขวาลากเพื่อเลื่อน · สกรอลเพื่อซูม',
 };
 const perspTarget = new V();
@@ -1348,7 +1479,7 @@ function setView(name, instant = false) {
   view = name;
   document.querySelectorAll('#views button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
   document.getElementById('hint').textContent = HINT[name];
-  const top = name === 'top', entry = name === 'entry';
+  const top = name === 'top', entry = name === 'entry' || name === 'bath';
 
   activeCam = top ? ortho : persp;
   controls.object = activeCam;
@@ -1376,7 +1507,10 @@ function setView(name, instant = false) {
     applyLayout();
   } else {
     let pos, target;
-    if (entry) { pos = EYE.pos.clone(); target = EYE.look.clone().sub(EYE.pos).setLength(0.1).add(EYE.pos); }
+    if (entry) {
+      const e = name === 'bath' ? BATH_EYE : EYE;
+      pos = e.pos.clone(); target = e.look.clone().sub(e.pos).setLength(0.1).add(e.pos);
+    }
     else { target = ORBIT.target.clone(); pos = target.clone().addScaledVector(ORBIT.dir, fitDistance(ORBIT.dir, target)); }
     controls.target.copy(perspTarget);
     if (instant) { persp.position.copy(pos); controls.target.copy(target); if (name === 'orbit') controls.autoRotate = true; }
