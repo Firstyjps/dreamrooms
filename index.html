@@ -115,6 +115,16 @@
     overflow: hidden; text-overflow: ellipsis;
   }
   #toast.show { opacity: 1; }
+  #panel.mini { width: 250px; padding: 10px 12px; }
+  #panel.mini h1 { font-size: 14px; }
+  #panel.mini .sub, #panel.mini #light { display: none; }
+  #panel.mini #more-btn { display: inline-block; }
+  #panel.mini:not(.open) #more { display: none; }
+  #panel.mini section { margin-top: 8px; }
+  #crosshair {
+    position: fixed; width: 6px; height: 6px; border-radius: 50%; transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95); box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.45); pointer-events: none;
+  }
   #joy {
     position: fixed; left: 20px; bottom: 20px; width: 120px; height: 120px; border-radius: 50%;
     background: rgba(255, 255, 255, 0.35); border: 1px solid rgba(255, 255, 255, 0.7);
@@ -249,6 +259,7 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
+<div id="crosshair" hidden></div>
 <div id="joy" hidden aria-label="จอยสติ๊กเดิน"><div id="joyKnob"></div></div>
 
 <div id="hud">
@@ -1634,6 +1645,36 @@ const walk = (() => {
   const apply = () => { persp.position.set(pos.x, eyeY, pos.z); persp.rotation.set(pitch, yaw, 0, 'YXZ'); };
 
   const joy = document.getElementById('joy'), knob = document.getElementById('joyKnob');
+  const crosshair = document.getElementById('crosshair'), moreBtnEl = document.getElementById('more-btn');
+  const canLock = !touch && typeof canvas.requestPointerLock === 'function';
+  let locked = false;
+  const HINT_WALK = canLock
+    ? 'คลิกภาพแล้วขยับเมาส์เพื่อหันมอง · WASD เดิน · Shift วิ่ง · Esc ปลดเมาส์'
+    : 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง';
+  const HINT_LOCKED = 'ขยับเมาส์เพื่อหันมอง · WASD เดิน · Shift วิ่ง · Esc ปลดเมาส์';
+  function placeCrosshair() {   // จุดกึ่งกลางภาพจริง (ภาพถูกเลื่อนหลบแผงด้วย setViewOffset)
+    const { l, t, b } = insets();
+    crosshair.style.left = `${innerWidth / 2 + l / 2}px`;
+    crosshair.style.top = `${innerHeight / 2 - (b - t) / 2}px`;
+  }
+  function setPanelMini(mini) {
+    panel.classList.toggle('mini', mini);
+    panel.classList.remove('open');
+    moreBtnEl.setAttribute('aria-expanded', 'false');
+    moreBtnEl.textContent = 'เมนู';
+    applyLayout();
+  }
+  document.addEventListener('pointerlockchange', () => {
+    locked = document.pointerLockElement === canvas;
+    crosshair.hidden = !(on && locked);
+    if (locked) placeCrosshair();
+    if (on) document.getElementById('hint').textContent = locked ? HINT_LOCKED : HINT_WALK;
+  });
+  document.addEventListener('mousemove', (e) => {   // เมาส์ล็อกอยู่: ขยับเมาส์ = หันมอง (แบบเกม FPS)
+    if (!on || !locked) return;
+    yaw -= e.movementX * 0.0022;
+    pitch = Math.max(-1.3, Math.min(1.3, pitch - e.movementY * 0.0022));
+  });
   function start(e) {
     on = true;
     pos.set(e.pos.x, 0, e.pos.z);
@@ -1644,10 +1685,17 @@ const walk = (() => {
     last = performance.now();
     keys.clear();
     joy.hidden = !touch;
+    setPanelMini(true);
+    document.getElementById('hint').textContent = HINT_WALK;
     if (touch) joy.style.bottom = `${(isMobile() ? innerHeight - panel.getBoundingClientRect().top : 0) + 20}px`;
     apply();
   }
-  function stop() { on = false; joy.hidden = true; keys.clear(); }
+  function stop() {
+    if (!on) return;
+    on = false; joy.hidden = true; crosshair.hidden = true; keys.clear();
+    if (locked) document.exitPointerLock();
+    setPanelMini(false);
+  }
   function update() {
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000);
     last = now;
@@ -1675,12 +1723,15 @@ const walk = (() => {
   canvas.addEventListener('pointerdown', (e) => {
     if (!on) return;
     e.stopImmediatePropagation();
-    if (look) return;
+    if (canLock && !locked && e.pointerType === 'mouse' && e.button === 0) {
+      try { canvas.requestPointerLock()?.catch?.(() => {}); } catch { /* บางเบราว์เซอร์/iframe ไม่อนุญาต — ใช้การลากแทน */ }
+    }
+    if (look || locked) return;
     look = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    canvas.setPointerCapture(e.pointerId);
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* ระหว่างขอล็อกเมาส์ capture ไม่ได้ — ไม่เป็นไร */ }
   }, { capture: true });
   canvas.addEventListener('pointermove', (e) => {
-    if (!on || !look || e.pointerId !== look.id) return;
+    if (!on || locked || !look || e.pointerId !== look.id) return;
     yaw += (e.clientX - look.x) * 0.0045;
     pitch = Math.max(-1.3, Math.min(1.3, pitch + (e.clientY - look.y) * 0.0045));
     look.x = e.clientX; look.y = e.clientY;
@@ -1770,6 +1821,7 @@ function setView(name, instant = false) {
     let pos, target;
     if (entry) {
       walk.start(name === 'bath' ? BATH_EYE : name === 'balcony' ? BALC_EYE : EYE);
+      document.querySelectorAll('#views button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
       if (walk.touch) toast('ใช้จอยซ้ายล่างเพื่อเดิน · ลากจอเพื่อหันมอง');
       return;
     }
