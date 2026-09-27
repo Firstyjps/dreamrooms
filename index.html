@@ -610,8 +610,8 @@ window.DreamRoom = { ROOM, FIXED, furniture, render: renderFurniture };
 // มุมมอง + การซ่อนผนัง
 // =====================================================================
 const VIEWS = {
-  overview: { pos: [-2.8, 6.4, -3.6], target: [1.7, 0.5, 3.7] },
-  top:      { pos: [1.7, 14.5, 3.699], target: [1.7, 0, 3.7] },   // ประตูอยู่ล่าง ระเบียงอยู่บนจอ
+  overview: { pos: [-2.8, 6.4, -3.6], target: [1.7, 0.5, 3.7], fit: true },
+  top:      { pos: [1.7, 14.5, 3.699], target: [1.7, 0, 3.7], fit: true },   // ประตูอยู่ล่าง ระเบียงอยู่บนจอ
   entry:    { pos: [0.55, 1.6, 0.35], target: [2.0, 1.2, 6.5] },
   window:   { pos: [1.7, 1.6, 6.6], target: [1.3, 1.0, 0.8] },
 };
@@ -619,6 +619,10 @@ let tween = null;
 function goTo(name, instant = false) {
   const v = VIEWS[name];
   const to = { pos: new THREE.Vector3(...v.pos), target: new THREE.Vector3(...v.target) };
+  if (v.fit) {  // จอแคบ (มือถือแนวตั้ง) → ถอยกล้องออกให้เห็นทั้งห้อง
+    const k = Math.max(1, Math.pow(1.3 / camera.aspect, 0.65));
+    to.pos.sub(to.target).multiplyScalar(k).add(to.target);
+  }
   if (instant) { camera.position.copy(to.pos); controls.target.copy(to.target); return; }
   tween = { from: { pos: camera.position.clone(), target: controls.target.clone() }, to, t0: performance.now(), dur: 800 };
 }
