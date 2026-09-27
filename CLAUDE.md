@@ -39,6 +39,14 @@
 - เฟอร์นิเจอร์ห้ามทับ: ผนัง, ห้องน้ำ, ตู้บิวท์อิน, เสา, รัศมีเปิดประตู และกันเอง (`STATIC`)
 - ทำทีละขั้น และสรุปสิ่งที่เปลี่ยนทุกครั้งหลังแก้
 
+## ประสิทธิภาพ (อย่าทำพัง)
+- วาดเฉพาะตอนจำเป็น: loop ข้ามการ render ถ้ากล้องไม่ขยับ (เทียบ matrix แบบมีค่าเผื่อ) และไม่มี `invalidate()` / ไม่มี input ใน 400 ms
+  → โค้ดที่เปลี่ยนฉากแบบไม่มี input จาก user ต้องเรียก `invalidate()` (ถ้าเปลี่ยนสิ่งที่ทอดเงา ใช้ `invalidate({ shadows: true })`)
+- เงา `shadowMap.autoUpdate = false` — คำนวณใหม่เฉพาะตอน invalidate แบบ shadows
+- `mergeStatic()` รวม mesh ที่เป็นลูกตรงของ scene ตาม material ตอนเริ่ม (ห้องน้ำ/ระเบียง/บิวท์อิน) — ของที่ต้องขยับ/raycast ห้ามเป็นลูกตรงของ scene หรือต้องใส่ใน skip
+- ลด pixel ratio อัตโนมัติถ้าเฉลี่ย > 28 ms/เฟรม · มือถือ shadow map 1024
+- GPU context lost → แจ้งแล้ว reload · โหลดไม่ขึ้นใน 12 วิ → แสดงข้อความ + ปุ่มรีเฟรช
+
 ## Deploy
 - GitHub Pages: https://firstyjps.github.io/dreamrooms/ (repo `Firstyjps/dreamrooms`, branch main) — `git push` = deploy
 - เปิดในเครื่องด้วย file:// ได้เลย (`python3 -m http.server` ใน Desktop โดน macOS permission บล็อก)

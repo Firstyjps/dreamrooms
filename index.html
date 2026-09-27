@@ -121,6 +121,12 @@
   #panel.mini #more-btn { display: inline-block; }
   #panel.mini:not(.open) #more { display: none; }
   #panel.mini section { margin-top: 8px; }
+  #bootErr {
+    position: fixed; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center;
+    background: var(--bg); color: var(--ink); padding: 24px; z-index: 10;
+  }
+  #bootErr span { color: var(--muted); }
+  #bootErr button { justify-self: center; padding: 8px 18px; }
   #crosshair {
     position: fixed; width: 6px; height: 6px; border-radius: 50%; transform: translate(-50%, -50%);
     background: rgba(255, 255, 255, 0.95); box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.45); pointer-events: none;
@@ -183,6 +189,15 @@
 </head>
 <body>
 <div id="app"></div>
+<div id="bootErr" hidden>
+  <b>โหลดโมเดล 3D ไม่สำเร็จ</b>
+  <span>ตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า — หรือเบราว์เซอร์นี้อาจไม่รองรับ WebGL</span>
+  <button type="button" onclick="location.reload()">รีเฟรช</button>
+</div>
+<script>
+  // ถ้าโมดูลหลักไม่เริ่มใน 12 วินาที (CDN/เน็ต/WebGL มีปัญหา) ให้แสดงข้อความแทนจอว่าง
+  setTimeout(() => { if (!window.DreamRoom) document.getElementById('bootErr').hidden = false; }, 12000);
+</script>
 <div id="labels"></div>
 
 <aside id="panel">
@@ -272,6 +287,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const V = THREE.Vector3;
 const deg = THREE.MathUtils.degToRad;
@@ -357,6 +373,16 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.autoUpdate = false;              // เงาคำนวณใหม่เฉพาะตอนฉากเปลี่ยน (invalidate)
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches;
+// ---------- วาดเฉพาะตอนจำเป็น: กล้องขยับ · ฉากเปลี่ยน · มีการกด/พิมพ์/ลากในช่วงสั้น ๆ ----------
+let needFrame = true, dirtyUntil = 0;
+function invalidate({ shadows = false, ms = 0 } = {}) {
+  needFrame = true;
+  if (shadows) renderer.shadowMap.needsUpdate = true;
+  if (ms) dirtyUntil = Math.max(dirtyUntil, performance.now() + ms);
+}
+renderer.shadowMap.needsUpdate = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -390,7 +416,7 @@ const sun = new THREE.DirectionalLight(0xfff0da, 2.4);
 sun.position.set(0.2, 6.5, 13.5);   // แดดเข้าจากฝั่งระเบียง
 sun.target.position.set(1.7, 0, 3.5);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.setScalar(IS_TOUCH ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.02;
@@ -1009,6 +1035,7 @@ const ceiling = new THREE.Group();
 const curtain = new THREE.Group();
 scene.add(curtain);
 function buildCurtain(closed) {
+  if (typeof invalidate === 'function') invalidate({ shadows: true });
   curtain.traverse((o) => o.geometry?.dispose());
   curtain.clear();
   const x0 = F.slider.x0 - 0.15, x1 = F.slider.x1 + 0.08, z = D - 0.1, top = F.slider.h + 0.1;
@@ -1331,6 +1358,7 @@ const byId = (id) => furniture.find((f) => f.id === id);
 const newId = () => 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 function place(f) {
+  invalidate({ shadows: true });
   const o = objs.get(f.id);
   if (o) { o.position.set(f.x, 0, f.z); o.rotation.y = deg(f.rotation || 0); }
   const t = tags.get(f.id);
@@ -1338,6 +1366,7 @@ function place(f) {
 }
 
 function rebuild() {
+  invalidate({ shadows: true });
   disposeGroup(furnitureGroup);
   disposeGroup(planLabels);
   objs.clear(); tags.clear();
@@ -1379,6 +1408,7 @@ const gapViz = Array.from({ length: 4 }, () => {
 });
 
 function updateSelection() {
+  invalidate();
   const f = selectedId && byId(selectedId);
   selBox.visible = selFloor.visible = !!f;
   document.getElementById('selbar').hidden = !f;
@@ -1412,7 +1442,7 @@ function updateSelection() {
 function flash(color = BAD) {
   selBox.material.color.set(color);
   selFloor.material.color.set(color);
-  setTimeout(() => { selBox.material.color.set(ACCENT); selFloor.material.color.set(ACCENT); }, 450);
+  setTimeout(() => { selBox.material.color.set(ACCENT); selFloor.material.color.set(ACCENT); invalidate(); }, 450);
 }
 
 function select(id) {
@@ -1535,6 +1565,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 // =====================================================================
 let lightMode = 'day';
 function setLight(mode) {
+  invalidate({ shadows: true });
   lightMode = mode;
   const night = mode === 'night';
   sun.intensity = night ? 0 : 2.4;
@@ -1566,6 +1597,7 @@ function insets() {
 let view = 'orbit', tween = null;
 // เลื่อนจุดกึ่งกลางภาพไปกลางพื้นที่ที่แผงไม่บัง
 function applyLayout() {
+  invalidate();
   const { l, t, b } = insets();
   for (const cam of [persp, ortho]) cam.setViewOffset(innerWidth, innerHeight, -l / 2, (b - t) / 2, innerWidth, innerHeight);
   persp.aspect = innerWidth / innerHeight;
@@ -1838,7 +1870,7 @@ controls.addEventListener('start', () => { controls.autoRotate = false; tween = 
 // ตัวเลือกแสดงผล
 // =====================================================================
 const tCut = document.getElementById('tCut'), tLabels = document.getElementById('tLabels');
-function syncLabels() { fixedLabels.forEach((o) => { o.visible = tLabels.checked && view !== 'top'; }); }
+function syncLabels() { invalidate(); fixedLabels.forEach((o) => { o.visible = tLabels.checked && view !== 'top'; }); }
 tLabels.addEventListener('change', syncLabels);
 document.getElementById('tGrid').addEventListener('change', (e) => { grid.visible = e.target.checked; });
 document.getElementById('tCeil').addEventListener('change', (e) => { ceiling.visible = e.target.checked; });
@@ -1847,6 +1879,7 @@ document.getElementById('tAccent').addEventListener('change', (e) => { MAT.accen
 
 function setGhost(group, on) {
   if (group.userData.ghost === on) return;
+  invalidate();
   group.userData.ghost = on;
   group.traverse((o) => {
     if (!o.isMesh) return;
@@ -1970,6 +2003,7 @@ function exportPNG() {
   const pr = renderer.getPixelRatio();
   renderer.setPixelRatio(1);
   renderer.setSize(w, h, false);
+  renderer.shadowMap.needsUpdate = true;
   renderer.render(scene, cam);
 
   const out = document.createElement('canvas');
@@ -2108,13 +2142,81 @@ try {
   if (saved) { hadSaved = true; furniture.push(...parseLayout(saved)); }
 } catch { /* ไม่มี layout เก่า หรืออ่านไม่ได้ */ }
 if (!hadSaved) furniture.push(...defaultLayout());   // เปิดครั้งแรก = จัดตามรูปถ่าย
+// ---------- รวม mesh ที่ไม่ขยับ: ห้องน้ำ ระเบียง บิวท์อิน ฯลฯ ที่เป็นลูกตรงของ scene → รวมตาม material ----------
+// (ไม่แตะ: ผนังที่โปร่งใสได้, เฟอร์นิเจอร์, พื้นที่ใช้ raycast, ของโปร่งใส/มี renderOrder, ตัวไฮไลต์)
+function mergeStatic() {
+  const skip = new Set([floor, selFloor, marker, ...gapViz.map((g) => g.bar)]);
+  const buckets = new Map();
+  for (const o of [...scene.children]) {
+    if (!o.isMesh || skip.has(o) || o.renderOrder || Array.isArray(o.material) || o.material.transparent) continue;
+    const key = `${o.material.uuid}|${o.castShadow}|${o.receiveShadow}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(o);
+  }
+  let removed = 0;
+  for (const list of buckets.values()) {
+    if (list.length < 2) continue;
+    const geos = list.map((m) => {
+      m.updateMatrixWorld(true);
+      const g = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(m.matrixWorld);
+      for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+      return g;
+    });
+    const merged = mergeGeometries(geos, false);
+    geos.forEach((g) => g.dispose());
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, list[0].material);
+    mesh.castShadow = list[0].castShadow;
+    mesh.receiveShadow = list[0].receiveShadow;
+    for (const m of list) { scene.remove(m); m.geometry.dispose(); }
+    scene.add(mesh);
+    removed += list.length - 1;
+  }
+  return removed;
+}
+mergeStatic();
+
+// ---------- เหตุการณ์ที่ทำให้ต้องวาดใหม่ ----------
+for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown', 'keyup', 'resize', 'touchmove']) {
+  addEventListener(ev, () => invalidate({ ms: 400 }), { passive: true, capture: true });
+}
+for (const ev of ['change', 'click']) addEventListener(ev, () => invalidate({ shadows: true, ms: 400 }), { capture: true });
+document.addEventListener('visibilitychange', () => invalidate({ ms: 400 }));
+
+// ---------- GPU หลุด (context lost) → แจ้งแล้วโหลดใหม่ ----------
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  toast('การแสดงผล 3D หยุดทำงาน กำลังโหลดใหม่…', true);
+  setTimeout(() => location.reload(), 1500);
+});
+
 rebuild();
 buildDims();
-document.fonts?.ready.then(() => { buildDims(); rebuild(); });
+document.fonts?.ready.then(() => { buildDims(); rebuild(); invalidate(); });
 applyLayout();
 setView('orbit', true);
 
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+// ลดความละเอียดอัตโนมัติถ้าเครื่องวาดไม่ทัน (เฉลี่ย > 28 ms/เฟรม ขณะภาพเคลื่อนไหว)
+let frameAvg = 16, lastFrame = performance.now(), slowFrames = 0;
+const MIN_PR = 1;
+function adaptQuality(now) {
+  const dt = now - lastFrame;
+  lastFrame = now;
+  if (dt > 200) return;                                     // เพิ่งกลับจากหยุดวาด — ไม่นับ
+  frameAvg += (dt - frameAvg) * 0.05;
+  slowFrames = frameAvg > 28 ? slowFrames + 1 : 0;
+  const pr = renderer.getPixelRatio();
+  if (slowFrames > 90 && pr > MIN_PR) {
+    renderer.setPixelRatio(Math.max(MIN_PR, pr - 0.25));
+    renderer.setSize(innerWidth, innerHeight);
+    slowFrames = 0;
+    frameAvg = 16;
+  }
+}
+const lastView = new THREE.Matrix4(), lastProj = new THREE.Matrix4();
+// เทียบแบบมีค่าเผื่อ: damping ของกล้องหมุนต่ออีกนิดเดียวไปเรื่อย ๆ จนมองไม่เห็นความต่าง
+const matNear = (a, b) => a.elements.every((v, i) => Math.abs(v - b.elements[i]) < 1e-5);
 renderer.setAnimationLoop(() => {
   if (tween) {
     const t = Math.min(1, (performance.now() - tween.t0) / tween.dur), k = ease(t);
@@ -2124,10 +2226,18 @@ renderer.setAnimationLoop(() => {
   }
   if (walk.on) walk.update(); else controls.update();
   updateCutaway();
+  activeCam.updateMatrixWorld();
+  const now = performance.now();
+  const moved = !matNear(lastView, activeCam.matrixWorld) || !matNear(lastProj, activeCam.projectionMatrix);
+  if (!moved && !needFrame && now > dirtyUntil) { lastFrame = now; return; }   // ภาพนิ่ง — ไม่ต้องวาด
+  needFrame = false;
+  lastView.copy(activeCam.matrixWorld);
+  lastProj.copy(activeCam.projectionMatrix);
+  adaptQuality(now);
   renderer.render(scene, activeCam);
   labelRenderer.render(scene, activeCam);
 });
-window.DreamRoom = { ROOM, FIXED, CATALOG, furniture, rebuild, setView, setLight, exportPNG };
+window.DreamRoom = { ROOM, FIXED, CATALOG, furniture, rebuild, setView, setLight, exportPNG, renderer, scene };
 </script>
 </body>
 </html>
