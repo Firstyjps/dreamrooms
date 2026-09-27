@@ -1798,7 +1798,7 @@ const walk = (() => {
   joy.addEventListener('pointerup', endJoy);
   joy.addEventListener('pointercancel', endJoy);
 
-  return { start, stop, update, touch, get on() { return on; } };
+  return { start, stop, update, touch, canStand: (x, z) => !blocked(x, z), get on() { return on; }, get locked() { return locked; } };
 })();
 
 const EYE = { pos: new V((FIXED.entry.x0 + FIXED.entry.x1) / 2, 1.6, 0.35), look: new V(2.7, 1.3, D) };
@@ -1806,20 +1806,22 @@ const BATH_EYE = { pos: new V(FIXED.bath.x1 - 0.3, 1.6, FIXED.bath.z0 + 0.25), l
 const BALC_EYE = { pos: new V(3.3, 1.6, D + 0.2), look: new V(2.2, 1.15, BALCONY_Z1) };
 const ORBIT = { dir: new V(-4.5, 5.9, -7.3).normalize(), target: new V(W / 2, 0.8, BALCONY_Z1 / 2) };
 const HINT = {
-  top: 'ลากพื้นเพื่อเลื่อน · สกรอลเพื่อซูม · ลากเฟอร์นิเจอร์เพื่อย้าย',
+  top: 'ลากพื้นเพื่อเลื่อน · สกรอลเพื่อซูม · ลากเฟอร์นิเจอร์เพื่อย้าย · ดับเบิลคลิกพื้นเพื่อลงไปเดิน',
   entry: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
   bath: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
   balcony: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
-  orbit: 'ลากเพื่อหมุน · คลิกขวาลากเพื่อเลื่อน · สกรอลเพื่อซูม',
+  orbit: 'ลากเพื่อหมุน · สกรอลเพื่อซูม · ดับเบิลคลิกพื้นเพื่อลงไปเดิน',
+  free: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
 };
 const perspTarget = new V();
+let freeEye = EYE;   // จุดเริ่มเดินจากการดับเบิลคลิกพื้น
 
 function setView(name, instant = false) {
   if (view !== 'top') perspTarget.copy(controls.target);
   view = name;
   document.querySelectorAll('#views button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
   document.getElementById('hint').textContent = HINT[name];
-  const top = name === 'top', entry = name === 'entry' || name === 'bath' || name === 'balcony';
+  const top = name === 'top', entry = ['entry', 'bath', 'balcony', 'free'].includes(name);
 
   activeCam = top ? ortho : persp;
   controls.object = activeCam;
@@ -1852,7 +1854,7 @@ function setView(name, instant = false) {
   } else {
     let pos, target;
     if (entry) {
-      walk.start(name === 'bath' ? BATH_EYE : name === 'balcony' ? BALC_EYE : EYE);
+      walk.start(name === 'free' ? freeEye : name === 'bath' ? BATH_EYE : name === 'balcony' ? BALC_EYE : EYE);
       document.querySelectorAll('#views button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
       if (walk.touch) toast('ใช้จอยซ้ายล่างเพื่อเดิน · ลากจอเพื่อหันมอง');
       return;
@@ -1977,6 +1979,41 @@ canvas.addEventListener('pointerup', (e) => {
   down = null;
 });
 canvas.addEventListener('pointercancel', endDrag);
+
+// ---------- ดับเบิลคลิก (หรือแตะสองครั้ง) บนพื้น → ลงไปยืนเดินตรงจุดนั้น ----------
+// ตรวจเองจาก pointerdown/up (รองรับทั้งเมาส์และนิ้ว) · ลากหรือแตะโดนเฟอร์นิเจอร์ไม่นับ
+let tapStart = null, lastTap = null;
+addEventListener('pointerdown', (e) => {
+  tapStart = e.target === canvas ? { x: e.clientX, y: e.clientY } : null;
+}, { capture: true });
+canvas.addEventListener('pointerup', (e) => {
+  if (!tapStart || Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) > 8 || walk.locked) { tapStart = null; return; }
+  const now = performance.now(), tap = { t: now, x: e.clientX, y: e.clientY };
+  const isDouble = lastTap && now - lastTap.t < 350 && Math.hypot(tap.x - lastTap.x, tap.y - lastTap.y) < 25;
+  lastTap = isDouble ? null : tap;
+  tapStart = null;
+  if (isDouble && !pickFurniture(e)) walkToFloor(e);
+});
+function walkToFloor(e) {
+  const p = floorPoint(e);
+  if (!p) return;
+  let spot = walk.canStand(p.x, p.z) ? { x: p.x, z: p.z } : null;
+  for (let r = 0.1; !spot && r <= 0.6; r += 0.1) {           // ถ้าตรงนั้นติดของ หาจุดว่างใกล้ที่สุด
+    for (let k = 0; k < 16 && !spot; k++) {
+      const x = p.x + r * Math.cos((k * Math.PI) / 8), z = p.z + r * Math.sin((k * Math.PI) / 8);
+      if (walk.canStand(x, z)) spot = { x, z };
+    }
+  }
+  if (!spot) { toast('ตรงนั้นยืนไม่ได้ ลองดับเบิลคลิกบนพื้นที่ว่าง', true); return; }
+  const d = new V();
+  activeCam.getWorldDirection(d);
+  d.y = 0;
+  if (d.lengthSq() < 0.01) d.set(0, 0, 1);                   // มองลงตรง ๆ (มุมบน) → หันไปทางระเบียง
+  d.normalize();
+  freeEye = { pos: new V(spot.x, 1.6, spot.z), look: new V(spot.x + d.x, 1.45, spot.z + d.z) };
+  setView('free');
+  document.querySelectorAll('#views button').forEach((b) => b.classList.remove('on'));
+}
 
 // =====================================================================
 // Export PNG (แปลนจากบน orthographic, 150 px/ม.)
