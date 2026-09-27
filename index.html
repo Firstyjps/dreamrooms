@@ -1035,20 +1035,64 @@ const ceiling = new THREE.Group();
 // ---------- ม่าน (เปิด = รวบฝั่งผนังเหลือง, ปิด = เต็มประตูกระจก) ----------
 const curtain = new THREE.Group();
 scene.add(curtain);
-function buildCurtain(closed) {
-  if (typeof invalidate === 'function') invalidate({ shadows: true });
-  curtain.traverse((o) => o.geometry?.dispose());
-  curtain.clear();
-  const x0 = F.slider.x0 - 0.15, x1 = F.slider.x1 + 0.08, z = D - 0.1, top = F.slider.h + 0.1;
-  curtain.add(box(MAT.metal, x0, x1, top, top + 0.025, z - 0.01, z + 0.015));
-  const panels = closed ? [[x0, x1]] : [[x1 - 0.4, x1]];
-  for (const [a, b] of panels) {
-    const n = Math.max(4, Math.round((b - a) / 0.07)), pw = (b - a) / n;
-    for (let i = 0; i < n; i++) {
-      const off = i % 2 ? 0.035 : 0;
-      curtain.add(box(MAT.curtain, a + i * pw, a + (i + 1) * pw + 0.004, 0.02, top, z - 0.05 - off, z - 0.035 - off));
+// ผ้าม่านจีบ (pinch pleat) สีเบจผ้าซาติน ลายเส้นคลื่นแนวตั้ง — ทำจากผืนเดียวที่ดัดเป็นลอน ไม่ใช่กล่องเรียงกัน
+const CURTAIN_TEX = canvasTexture(512, (g, S) => {           // 1 แผ่น = 0.6 × 0.6 ม.
+  g.fillStyle = '#d6bea1'; g.fillRect(0, 0, S, S);
+  const r = rand(17);
+  for (let k = 0; k < 14; k++) {                            // ลายเส้นคลื่นบาง ๆ ในเนื้อผ้า (เห็นชัดเฉพาะตอนต้องแสง)
+    const x0 = (k + r() * 0.6) * (S / 14), amp = 3 + r() * 5, ph = r() * 6.28;
+    for (const [c, w, dx] of [['rgba(255, 248, 236, 0.28)', 1.2, 0], ['rgba(140, 110, 80, 0.10)', 1, 2]]) {
+      g.strokeStyle = c; g.lineWidth = w;
+      g.beginPath();
+      for (let y = 0; y <= S; y += 8) g.lineTo(x0 + dx + Math.sin((y / S) * Math.PI * 4 + ph) * amp, y);
+      g.stroke();
     }
   }
+}, 1, 1);
+function curtainPanel(x0, x1, top, z, gather) {
+  const w = x1 - x0, h = top - 0.02, period = 0.15 / gather, amp = 0.022 * Math.sqrt(gather);
+  const geo = new THREE.PlaneGeometry(w, h, Math.ceil(w / 0.008), 30);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + w / 2, t = (h / 2 - p.getY(i)) / h;          // t: 0 = บน, 1 = ชายล่าง
+    const ph = (x / period) * Math.PI * 2;
+    const pinch = Math.pow(Math.abs(Math.sin(ph / 2)), 0.6) * 2 - 1;   // ลอนจีบแหลมด้านบน → คลายเป็นลอนนุ่มด้านล่าง
+    const wave = pinch * (1 - t) + Math.sin(ph) * t;
+    p.setZ(i, wave * amp * (0.55 + 0.7 * t) + Math.sin(ph * 0.31 + t * 2.4) * 0.008 * t);
+  }
+  geo.computeVertexNormals();
+  const tex = CURTAIN_TEX.clone();
+  tex.needsUpdate = true;
+  tex.repeat.set(w / 0.6, h / 0.6);
+  const mat = new THREE.MeshPhysicalMaterial({
+    map: tex, roughness: 0.5, side: THREE.DoubleSide,
+    sheen: 0.8, sheenColor: new THREE.Color(0xfff0dc), sheenRoughness: 0.35,
+  });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x0 + w / 2, 0.02 + h / 2, z);
+  m.castShadow = m.receiveShadow = true;
+  curtain.add(m);
+  // หัวจีบ 3 ทบ + ตะขอ ทุกช่วงลอน
+  const head = new THREE.MeshStandardMaterial({ color: 0xcdb392, roughness: 0.6 });
+  for (let x = x0 + period * 0.5; x < x1 - 0.01; x += period) {
+    curtain.add(box(head, x - 0.012, x + 0.012, top - 0.12, top - 0.02, z - 0.025, z + 0.02));
+    curtain.add(box(MAT.metal, x - 0.004, x + 0.004, top - 0.02, top + 0.02, z - 0.004, z + 0.004, { cast: false }));
+  }
+  curtain.add(box(head, x0, x1, top - 0.1, top - 0.02, z - 0.012, z + 0.006, { cast: false }));   // ผ้าเทปหัวม่าน
+}
+function buildCurtain(closed) {
+  if (typeof invalidate === 'function') invalidate({ shadows: true });
+  curtain.traverse((o) => {
+    o.geometry?.dispose();
+    if (o.material?.map && o.material.map !== CURTAIN_TEX) { o.material.map.dispose(); o.material.dispose(); }
+  });
+  curtain.clear();
+  const x0 = F.slider.x0 - 0.15, x1 = F.slider.x1 + 0.08, z = D - 0.1, top = F.slider.h + 0.12;
+  const track = new THREE.MeshStandardMaterial({ color: 0xf0efea, roughness: 0.35, metalness: 0.2 });
+  curtain.add(box(track, x0 - 0.03, x1 + 0.03, top + 0.02, top + 0.05, z - 0.03, z + 0.03));        // รางม่านอลูมิเนียมขาว
+  for (const x of [x0, x1]) curtain.add(box(track, x - 0.02, x + 0.02, top + 0.05, top + 0.09, z - 0.02, D));   // ขายึดผนัง
+  if (closed) curtainPanel(x0, x1, top, z, 1.1);             // ปิด: คลี่เต็มประตู
+  else curtainPanel(x1 - 0.42, x1, top, z, 3);               // เปิด: รวบฝั่งผนังเหลือง ลอนถี่
 }
 buildCurtain(false);
 
