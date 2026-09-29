@@ -2581,6 +2581,41 @@ const DeskSetup = (() => {
 
   load(); refreshCables();
 
+  // ---------- WASD เคลื่อนกล้องอิสระ (มุมโต๊ะคอม/รอบห้อง): W/S หน้า-หลัง · A/D ซ้าย-ขวา · Space ขึ้น · C ลง · Shift เร็ว ----------
+  const flyKeys = new Set(); let flyRaf = 0, flyLast = 0;
+  const canFly = () => view === 'desk' || view === 'orbit';
+  function flyStep(t) {
+    const dt = Math.min(0.05, (t - flyLast) / 1000); flyLast = t;
+    if (!flyKeys.size || !canFly()) { flyRaf = 0; return; }
+    const cam = activeCam, fwd = new V(); cam.getWorldDirection(fwd); fwd.y = 0;
+    if (fwd.lengthSq() < 1e-4) fwd.set(1, 0, 0);
+    fwd.normalize();
+    const right = new V().crossVectors(fwd, new V(0, 1, 0)).normalize(), mv = new V();
+    if (flyKeys.has('KeyW')) mv.add(fwd);
+    if (flyKeys.has('KeyS')) mv.sub(fwd);
+    if (flyKeys.has('KeyD')) mv.add(right);
+    if (flyKeys.has('KeyA')) mv.sub(right);
+    if (flyKeys.has('Space')) mv.y += 1;
+    if (flyKeys.has('KeyC')) mv.y -= 1;
+    if (mv.lengthSq() > 0) {
+      const dist = cam.position.distanceTo(controls.target), speed = Math.min(3, Math.max(0.5, dist * 0.6)) * (flyKeys.has('ShiftLeft') || flyKeys.has('ShiftRight') ? 2.5 : 1);
+      mv.normalize().multiplyScalar(speed * dt);
+      if (controls.target.y + mv.y < 0.05) mv.y = 0.05 - controls.target.y;
+      cam.position.add(mv); controls.target.add(mv); controls.update(); invalidate({ ms: 400 });
+    }
+    flyRaf = requestAnimationFrame(flyStep);
+  }
+  addEventListener('keydown', (e) => {
+    if (!canFly() || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, textarea, select')) return;
+    if (/^(Key[WASDC]|Space|Shift(Left|Right))$/.test(e.code)) {
+      flyKeys.add(e.code);
+      if (e.code !== 'ShiftLeft' && e.code !== 'ShiftRight') { e.preventDefault(); controls.autoRotate = false; tween = null; }
+      if (!flyRaf) { flyLast = performance.now(); flyRaf = requestAnimationFrame(flyStep); }
+    }
+  });
+  addEventListener('keyup', (e) => flyKeys.delete(e.code));
+  addEventListener('blur', () => flyKeys.clear());
+
   // ---------- ควบคุมจากภายนอก ----------
   function sync() {
     const ok = studioOn || EXPECT.every((e) => furniture.some((f) => f.type === e.type && Math.abs(f.x - e.x) < 0.01 && Math.abs(f.z - e.z) < 0.01 && f.rotation % 360 === e.rotation));
@@ -3041,7 +3076,7 @@ const HINT = {
   balcony: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
   orbit: 'ลากเพื่อหมุน · สกรอลเพื่อซูม · ดับเบิลคลิกพื้นเพื่อลงไปเดิน',
   free: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
-  desk: 'ลากชิ้นส่วน/สายได้เลย · ลากที่ว่างเพื่อหมุน · คลิกขวาลากเพื่อเลื่อน · สกรอลซูม · ดับเบิลคลิกชิ้นเพื่อซูมเข้า',
+  desk: 'ลากชิ้นส่วน/สาย/โต๊ะได้เลย · WASD เดินกล้อง · Space ขึ้น · C ลง · Shift เร็ว · ลากที่ว่างเพื่อหมุน · สกรอลซูม · ดับเบิลคลิกชิ้นเพื่อซูมเข้า',
 };
 const perspTarget = new V();
 let freeEye = EYE;   // จุดเริ่มเดินจากการดับเบิลคลิกพื้น
