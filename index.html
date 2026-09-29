@@ -2298,8 +2298,8 @@ const DeskSetup = (() => {
     dsbar.hidden = !(has && active());
     if (!has) return;
     dsName.textContent = selDesk ? DK[selDesk].name : selItem ? selItem.name : selCable.name;
-    dsHint.textContent = selDesk ? 'ลากเพื่อย้ายโต๊ะ (ของบนโต๊ะนี้ไปด้วย) · ต่อกับอีกตัวได้' : selItem ? 'ลากเพื่อย้าย · Q/E หมุน · ดับเบิลคลิกเพื่อซูม' : 'ลากที่สายเพื่อดัด · ลากจุดส้ม · ดับเบิลคลิกจุดเพื่อลบ';
-    bars.rotL.hidden = bars.rotR.hidden = !selItem;
+    dsHint.textContent = selDesk ? 'ลากเพื่อย้ายโต๊ะ (ของบนโต๊ะนี้ไปด้วย) · ⟲⟳ หมุนโต๊ะ 90°' : selItem ? 'ลากเพื่อย้าย · Q/E หมุน · ดับเบิลคลิกเพื่อซูม' : 'ลากที่สายเพื่อดัด · ลากจุดส้ม · ดับเบิลคลิกจุดเพื่อลบ';
+    bars.rotL.hidden = bars.rotR.hidden = !(selItem || selDesk);
     for (const b of bars.size) b.hidden = true;
     bars.reset.hidden = selDesk;
     bars.del.hidden = !(selCable && selPoint >= 0);
@@ -2434,6 +2434,7 @@ const DeskSetup = (() => {
     if (e.code === 'Escape') select(null);
   });
   function rotateSel(dir, step) {
+    if (selDesk) { const k = DK[selDesk]; k.rot = (k.rot + dir * 90 + 360) % 360; placeDesks(); Object.assign(DESK, studioBounds()); outline.setFromObject(k.g); save(); invalidate({ shadows: true }); return; }
     if (!selItem) return;
     selItem.group.rotation.y += dir * deg(step); selItem.group.updateMatrixWorld(true);
     keepOutline(); refreshCables(); save(); invalidate({ shadows: true });
@@ -2453,7 +2454,7 @@ const DeskSetup = (() => {
 
   // ---------- บันทึก / โหลด / รีเซ็ตทั้งชุด ----------
   function save() {
-    const data = { items: {}, cables: {}, desks: { A: [DK.A.x, DK.A.z], B: [DK.B.x, DK.B.z] } };
+    const data = { items: {}, cables: {}, desks: { A: [DK.A.x, DK.A.z, DK.A.rot], B: [DK.B.x, DK.B.z, DK.B.rot] } };
     for (const it of Object.values(items)) if (!it.fixed) data.items[it.id] = [it.group.position.x, it.group.position.z, it.group.rotation.y];
     for (const c of cableList) data.cables[c.id] = c.via.map((p) => [+p.x.toFixed(4), +p.y.toFixed(4), +p.z.toFixed(4)]);
     try { localStorage.setItem(STORE, JSON.stringify(data)); } catch { /* ข้าม */ }
@@ -2462,7 +2463,7 @@ const DeskSetup = (() => {
     let data = null;
     try { data = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch { /* ข้าม */ }
     if (!data) return;
-    for (const k of Object.values(DK)) { const v = data.desks?.[k.id]; if (Array.isArray(v) && v.every(Number.isFinite)) { k.x = v[0]; k.z = v[1]; } }
+    for (const k of Object.values(DK)) { const v = data.desks?.[k.id]; if (Array.isArray(v) && v.every(Number.isFinite)) { k.x = v[0]; k.z = v[1]; if (Number.isFinite(v[2])) k.rot = v[2]; } }
     placeDesks();
     for (const [id, v] of Object.entries(data.items || {})) {
       const it = items[id]; if (!it || !Array.isArray(v) || v.some((n) => !Number.isFinite(n))) continue;
@@ -2474,7 +2475,7 @@ const DeskSetup = (() => {
     }
   }
   function resetAll() {
-    for (const k of Object.values(DK)) { k.x = k.home[0]; k.z = k.home[1]; } placeDesks(); if (studioOn) Object.assign(DESK, studioBounds());
+    for (const k of Object.values(DK)) { k.x = k.home[0]; k.z = k.home[1]; k.rot = 90; } placeDesks(); if (studioOn) Object.assign(DESK, studioBounds());
     for (const it of Object.values(items)) { const h = it.home; it.group.position.set(h.x, h.y, h.z); it.group.rotation.y = h.ry; it.group.updateMatrixWorld(true); }
     for (const c of cableList) c.via = c.home.map((p) => p.clone());
     select(null); refreshCables(); save(); invalidate({ shadows: true });
@@ -2497,11 +2498,11 @@ const DeskSetup = (() => {
     wp(X1 - X0, HH, (X0 + X1) / 2, Z1, Math.PI);
     const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, Z1 - Z0), mat(0xd2d2ce, 0.8)); skirt.position.set(X1 - 0.01, 0.04, (Z0 + Z1) / 2); studioG.add(skirt);
   }
-  // โต๊ะจริง 2 ตัวต่อกันเป็นรูปตัว L (เหมือนในห้อง): 100×60 ชิดผนัง + 120×60 ยื่นออกมา — ลากแยกกันได้
+  // โต๊ะ 2 ตัว 160×60 + 120×60 วางแนวนอนต่อกันชิดผนัง — ลากแยกกัน/หมุน 90° ได้
   const deskG = new THREE.Group(); studioG.add(deskG);
   const DK = {
-    A: { id: 'A', name: 'โต๊ะ 100×60 (ชิดผนัง)', w: 1.0, d: 0.6, x: W - 0.30, z: 4.49, rot: 90, home: [W - 0.30, 4.49] },
-    B: { id: 'B', name: 'โต๊ะ 120×60 (ต่อฝั่งซ้าย)', w: 1.2, d: 0.6, x: W - 0.60, z: 3.69, rot: 180, home: [W - 0.60, 3.69] },
+    A: { id: 'A', name: 'โต๊ะ 160×60 (แนวนอน)', w: 1.6, d: 0.6, x: W - 0.30, z: 4.25, rot: 90, home: [W - 0.30, 4.25] },
+    B: { id: 'B', name: 'โต๊ะ 120×60 (แนวนอน)', w: 1.2, d: 0.6, x: W - 0.30, z: 2.85, rot: 90, home: [W - 0.30, 2.85] },
   };
   const deskRect = (k) => { const q = ((k.rot % 180) + 180) % 180 === 90 ? [k.d, k.w] : [k.w, k.d]; return { x0: k.x - q[0] / 2, x1: k.x + q[0] / 2, z0: k.z - q[1] / 2, z1: k.z + q[1] / 2 }; };
   for (const k of Object.values(DK)) {
@@ -2999,7 +3000,7 @@ const walk = (() => {
 const EYE = { pos: new V((FIXED.entry.x0 + FIXED.entry.x1) / 2, 1.6, 0.35), look: new V(2.7, 1.3, D) };
 const BATH_EYE = { pos: new V(FIXED.bath.x1 - 0.3, 1.6, FIXED.bath.z0 + 0.25), look: new V(0.75, 1.2, FIXED.bath.z1) };   // ยืนในห้องน้ำหลังประตู มองไปโซนอาบน้ำ + หน้าต่าง
 const DESK_VIEW = { target: new V(3.62, 0.86, 4.25), dir: new V(-0.55, 0.42, -0.35).normalize(), dist: 2.1 };
-const DESK_STUDIO = { target: new V(3.4, 0.8, 4.2), dir: new V(-0.75, 0.45, -0.25).normalize(), dist: 3.6 };
+const DESK_STUDIO = { target: new V(3.5, 0.8, 3.7), dir: new V(-0.75, 0.45, -0.25).normalize(), dist: 4.3 };
 const BALC_EYE = { pos: new V(3.3, 1.6, D + 0.2), look: new V(2.2, 1.15, BALCONY_Z1) };
 const ORBIT = { dir: new V(-4.5, 5.9, -7.3).normalize(), target: new V(W / 2, 0.8, BALCONY_Z1 / 2) };
 const HINT = {
