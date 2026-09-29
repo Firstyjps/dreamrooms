@@ -2334,7 +2334,7 @@ const DeskSetup = (() => {
       select({ desk: hit.id });
       const plane = new THREE.Plane(new V(0, 1, 0), -Y), p = ray.ray.intersectPlane(plane, new V());
       if (!p) return;
-      drag = { kind: 'desk', k: DK[hit.id], mem: deskMembers(DK[hit.id]), plane, last: p.clone(), id: e.pointerId, moved: false };
+      drag = { kind: 'desk', k: DK[hit.id], mem: deskMembers(DK[hit.id]), plane, p0: p.clone(), k0: { x: DK[hit.id].x, z: DK[hit.id].z }, id: e.pointerId, moved: false };
     } else if (hit.kind === 'item') {
       select({ item: hit.item });
       const it = hit.item, plane = new THREE.Plane(new V(0, 1, 0), -it.group.position.y), p = ray.ray.intersectPlane(plane, new V());
@@ -2380,9 +2380,10 @@ const DeskSetup = (() => {
     if (!p) return;
     const s = e.shiftKey ? 0.001 : 0.005;
     if (drag.kind === 'desk') {
-      let dx = snap(p.x - drag.last.x, s), dz = snap(p.z - drag.last.z, s);
-      const rr = deskRect(drag.k); if (rr.x1 + dx > W) dx = W - rr.x1;
-      if (dx || dz) { moveDesk(drag.k, drag.mem, dx, dz); drag.last.x += dx; drag.last.z += dz; drag.moved = true; }
+      const k = drag.k;
+      let dx = snap(drag.k0.x + (p.x - drag.p0.x) - k.x, s), dz = snap(drag.k0.z + (p.z - drag.p0.z) - k.z, s);
+      [dx, dz] = resolveDesk(k, dx, dz);
+      if (Math.abs(dx) > 1e-5 || Math.abs(dz) > 1e-5) { moveDesk(k, drag.mem, dx, dz); drag.moved = true; }
     } else if (drag.kind === 'item') {
       const it = drag.it, t = p.add(drag.off), b = it.bounds;
       it.group.position.x = Math.min(b.x1, Math.max(b.x0, snap(t.x, s)));
@@ -2434,7 +2435,8 @@ const DeskSetup = (() => {
     if (e.code === 'Escape') select(null);
   });
   function rotateSel(dir, step) {
-    if (selDesk) { const k = DK[selDesk]; k.rot = (k.rot + dir * 90 + 360) % 360; placeDesks(); Object.assign(DESK, studioBounds()); outline.setFromObject(k.g); save(); invalidate({ shadows: true }); return; }
+    if (selDesk) { const k = DK[selDesk]; const old = k.rot; k.rot = (k.rot + dir * 90 + 360) % 360; placeDesks();
+      const oth = k.id === 'A' ? DK.B : DK.A; if (OV(deskRect(k), deskRect(oth))) { k.rot = old; placeDesks(); toast('หมุนไม่ได้ ชนกับโต๊ะอีกตัว — ขยับโต๊ะออกก่อน', true); return; } Object.assign(DESK, studioBounds()); outline.setFromObject(k.g); save(); invalidate({ shadows: true }); return; }
     if (!selItem) return;
     selItem.group.rotation.y += dir * deg(step); selItem.group.updateMatrixWorld(true);
     keepOutline(); refreshCables(); save(); invalidate({ shadows: true });
@@ -2525,6 +2527,35 @@ const DeskSetup = (() => {
     const vias = [];
     for (const c of cableList) c.via.forEach((p) => { if (p.y > 0.3 && p.y < 1.7 && inside(p.x, p.z, 0.03) && !(p.x >= ro.x0 && p.x <= ro.x1 && p.z >= ro.z0 && p.z <= ro.z1 && !inside(p.x, p.z))) vias.push(p); });
     return { mine, vias };
+  }
+  // ชนกันไม่ได้ + ล็อกชิดขอบ: ขอบโต๊ะสองตัวห่างกันไม่เกิน 6 ซม. จะดูดติดกันพอดี
+  const OV = (a, b) => a.x0 < b.x1 - 1e-4 && a.x1 > b.x0 + 1e-4 && a.z0 < b.z1 - 1e-4 && a.z1 > b.z0 + 1e-4;
+  function resolveDesk(k, dx, dz) {
+    const o = k.id === 'A' ? DK.B : DK.A, ro = deskRect(o), S = 0.06;
+    const rect = (ex, ez) => deskRect({ ...k, x: k.x + ex, z: k.z + ez });
+    let ax = dx, az = 0;
+    let r = rect(ax, 0);
+    if (OV(r, ro)) { ax = dx > 0 ? ro.x0 - deskRect(k).x1 : ro.x1 - deskRect(k).x0; }
+    az = dz; r = rect(ax, az);
+    if (OV(r, ro)) { az = dz > 0 ? ro.z0 - deskRect(k).z1 : ro.z1 - deskRect(k).z0; }
+    r = rect(ax, az);
+    const zOv = Math.min(r.z1, ro.z1) - Math.max(r.z0, ro.z0), xOv = Math.min(r.x1, ro.x1) - Math.max(r.x0, ro.x0);
+    const trial = (ex, ez) => !OV(rect(ex, ez), ro);
+    if (zOv > 0.05) {   // ข้างกันในแกน X → ดูดขอบให้ชิด
+      if (Math.abs(r.x1 - ro.x0) < S && trial(ax + ro.x0 - r.x1, az)) ax += ro.x0 - r.x1;
+      else if (Math.abs(r.x0 - ro.x1) < S && trial(ax + ro.x1 - r.x0, az)) ax += ro.x1 - r.x0;
+    }
+    if (xOv > 0.05) {   // ข้างกันในแกน Z
+      if (Math.abs(r.z1 - ro.z0) < S && trial(ax, az + ro.z0 - r.z1)) az += ro.z0 - r.z1;
+      else if (Math.abs(r.z0 - ro.z1) < S && trial(ax, az + ro.z1 - r.z0)) az += ro.z1 - r.z0;
+    }
+    r = rect(ax, az);   // เรียงขอบให้ตรงแนวกัน
+    if (Math.abs(r.x1 - ro.x1) < S && trial(ax + ro.x1 - r.x1, az)) ax += ro.x1 - r.x1;
+    else if (Math.abs(r.x0 - ro.x0) < S && trial(ax + ro.x0 - r.x0, az)) ax += ro.x0 - r.x0;
+    if (Math.abs(r.z1 - ro.z1) < S && trial(ax, az + ro.z1 - r.z1)) az += ro.z1 - r.z1;
+    else if (Math.abs(r.z0 - ro.z0) < S && trial(ax, az + ro.z0 - r.z0)) az += ro.z0 - r.z0;
+    r = rect(ax, az); if (r.x1 > W) ax -= r.x1 - W;   // ไม่ทะลุผนัง
+    return [ax, az];
   }
   function moveDesk(k, mem, dx, dz) {
     k.x += dx; k.z += dz; placeDesks();
