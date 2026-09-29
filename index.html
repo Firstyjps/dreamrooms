@@ -2264,7 +2264,7 @@ const DeskSetup = (() => {
   // =====================================================================
   // การเลือก / ลาก / ดัดสาย
   // =====================================================================
-  let selItem = null, selCable = null, selPoint = -1, selDesk = false, drag = null;
+  let selItem = null, selCable = null, selPoint = -1, selDesk = null, drag = null;
   const outline = new THREE.BoxHelper(new THREE.Object3D(), 0xff8a2a); outline.visible = false; outline.material.depthTest = false; outline.renderOrder = 9; root.add(outline);
   const ray = new THREE.Raycaster();
   const dsbar = document.getElementById('dsbar'), dsName = document.getElementById('dsName'), dsHint = document.getElementById('dsHint');
@@ -2284,7 +2284,7 @@ const DeskSetup = (() => {
     }
     const hits = ray.intersectObjects(studioOn ? [gearG, cablesG, deskG] : [gearG, cablesG], true);
     for (const h of hits) {
-      if (studioOn && h.object.parent === deskG) return { kind: 'desk', point: h.point };
+      if (studioOn) { let o = h.object; while (o && o !== deskG && !o.userData.deskId) o = o.parent; if (o && o.userData.deskId) return { kind: 'desk', id: o.userData.deskId, point: h.point }; }
       if (h.object.userData.cableId) { if (!cablesG.visible) continue; return { kind: 'cable', cable: cableList.find((c) => c.id === h.object.userData.cableId), point: h.point }; }
       const it = itemOf(h.object);
       if (it && !it.fixed) return { kind: 'item', item: it };
@@ -2297,10 +2297,10 @@ const DeskSetup = (() => {
     const has = selItem || selCable || selDesk;
     dsbar.hidden = !(has && active());
     if (!has) return;
-    dsName.textContent = selDesk ? `โต๊ะ ${(SD.z1 - SD.z0).toFixed(2)} × ${(SD.x1 - SD.x0).toFixed(2)} ม.` : selItem ? selItem.name : selCable.name;
-    dsHint.textContent = selDesk ? 'ลากเพื่อย้ายโต๊ะพร้อมของทั้งหมด · ปรับขนาดด้วยปุ่ม' : selItem ? 'ลากเพื่อย้าย · Q/E หมุน · ดับเบิลคลิกเพื่อซูม' : 'ลากที่สายเพื่อดัด · ลากจุดส้ม · ดับเบิลคลิกจุดเพื่อลบ';
+    dsName.textContent = selDesk ? DK[selDesk].name : selItem ? selItem.name : selCable.name;
+    dsHint.textContent = selDesk ? 'ลากเพื่อย้ายโต๊ะ (ของบนโต๊ะนี้ไปด้วย) · ต่อกับอีกตัวได้' : selItem ? 'ลากเพื่อย้าย · Q/E หมุน · ดับเบิลคลิกเพื่อซูม' : 'ลากที่สายเพื่อดัด · ลากจุดส้ม · ดับเบิลคลิกจุดเพื่อลบ';
     bars.rotL.hidden = bars.rotR.hidden = !selItem;
-    for (const b of bars.size) b.hidden = !selDesk;
+    for (const b of bars.size) b.hidden = true;
     bars.reset.hidden = selDesk;
     bars.del.hidden = !(selCable && selPoint >= 0);
   }
@@ -2316,8 +2316,8 @@ const DeskSetup = (() => {
     invalidate();
   }
   function select(what) {
-    selItem = what?.item ?? null; selCable = what?.cable ?? null; selPoint = what?.point ?? -1; selDesk = !!what?.desk;
-    if (selItem) { outline.setFromObject(selItem.group); outline.visible = true; } else if (selDesk) { outline.setFromObject(deskG); outline.visible = true; } else outline.visible = false;
+    selItem = what?.item ?? null; selCable = what?.cable ?? null; selPoint = what?.point ?? -1; selDesk = what?.desk ?? null;
+    if (selItem) { outline.setFromObject(selItem.group); outline.visible = true; } else if (selDesk) { outline.setFromObject(DK[selDesk].g); outline.visible = true; } else outline.visible = false;
     updateHandles(); updateBar(); invalidate();
   }
   function keepOutline() { if (selItem) outline.setFromObject(selItem.group); }
@@ -2331,10 +2331,10 @@ const DeskSetup = (() => {
     controls.autoRotate = false; tween = null;
     setRayFrom(e);
     if (hit.kind === 'desk') {
-      select({ desk: true });
+      select({ desk: hit.id });
       const plane = new THREE.Plane(new V(0, 1, 0), -Y), p = ray.ray.intersectPlane(plane, new V());
       if (!p) return;
-      drag = { kind: 'desk', plane, last: p.clone(), id: e.pointerId, moved: false };
+      drag = { kind: 'desk', k: DK[hit.id], mem: deskMembers(DK[hit.id]), plane, last: p.clone(), id: e.pointerId, moved: false };
     } else if (hit.kind === 'item') {
       select({ item: hit.item });
       const it = hit.item, plane = new THREE.Plane(new V(0, 1, 0), -it.group.position.y), p = ray.ray.intersectPlane(plane, new V());
@@ -2381,8 +2381,8 @@ const DeskSetup = (() => {
     const s = e.shiftKey ? 0.001 : 0.005;
     if (drag.kind === 'desk') {
       let dx = snap(p.x - drag.last.x, s), dz = snap(p.z - drag.last.z, s);
-      if (SD.x1 + dx > W - 0.015) dx = W - 0.015 - SD.x1;
-      if (dx || dz) { moveAll(dx, dz); drag.last.x += dx; drag.last.z += dz; drag.moved = true; }
+      const rr = deskRect(drag.k); if (rr.x1 + dx > W) dx = W - rr.x1;
+      if (dx || dz) { moveDesk(drag.k, drag.mem, dx, dz); drag.last.x += dx; drag.last.z += dz; drag.moved = true; }
     } else if (drag.kind === 'item') {
       const it = drag.it, t = p.add(drag.off), b = it.bounds;
       it.group.position.x = Math.min(b.x1, Math.max(b.x0, snap(t.x, s)));
@@ -2446,11 +2446,6 @@ const DeskSetup = (() => {
   bars.rotR.addEventListener('click', () => rotateSel(-1, selItem?.step ?? 15));
   bars.del.addEventListener('click', removePoint);
   bars.close.addEventListener('click', () => select(null));
-  const resize = (dz, dx) => { if (!selDesk) return; const r = { ...SD }; r.z1 = Math.max(r.z0 + 1.0, r.z1 + dz); r.x0 = Math.min(r.x1 - 0.7, r.x0 - dx); setDeskRect(r); updateBar(); save(); };
-  bars.size[0].addEventListener('click', () => resize(0.2, 0));
-  bars.size[1].addEventListener('click', () => resize(-0.2, 0));
-  bars.size[2].addEventListener('click', () => resize(0, 0.1));
-  bars.size[3].addEventListener('click', () => resize(0, -0.1));
   bars.reset.addEventListener('click', () => {
     if (selItem) { const h = selItem.home; selItem.group.position.set(h.x, h.y, h.z); selItem.group.rotation.y = h.ry; selItem.group.updateMatrixWorld(true); keepOutline(); refreshCables(); save(); }
     else if (selCable) { selCable.via = selCable.home.map((p) => p.clone()); selPoint = -1; rebuildCable(selCable); updateHandles(); updateBar(); save(); }
@@ -2458,7 +2453,7 @@ const DeskSetup = (() => {
 
   // ---------- บันทึก / โหลด / รีเซ็ตทั้งชุด ----------
   function save() {
-    const data = { items: {}, cables: {}, desk: { ...SD } };
+    const data = { items: {}, cables: {}, desks: { A: [DK.A.x, DK.A.z], B: [DK.B.x, DK.B.z] } };
     for (const it of Object.values(items)) if (!it.fixed) data.items[it.id] = [it.group.position.x, it.group.position.z, it.group.rotation.y];
     for (const c of cableList) data.cables[c.id] = c.via.map((p) => [+p.x.toFixed(4), +p.y.toFixed(4), +p.z.toFixed(4)]);
     try { localStorage.setItem(STORE, JSON.stringify(data)); } catch { /* ข้าม */ }
@@ -2467,7 +2462,8 @@ const DeskSetup = (() => {
     let data = null;
     try { data = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch { /* ข้าม */ }
     if (!data) return;
-    if (data.desk && ['x0', 'x1', 'z0', 'z1'].every((k) => Number.isFinite(data.desk[k]))) { Object.assign(SD, data.desk); buildDesk(); }
+    for (const k of Object.values(DK)) { const v = data.desks?.[k.id]; if (Array.isArray(v) && v.every(Number.isFinite)) { k.x = v[0]; k.z = v[1]; } }
+    placeDesks();
     for (const [id, v] of Object.entries(data.items || {})) {
       const it = items[id]; if (!it || !Array.isArray(v) || v.some((n) => !Number.isFinite(n))) continue;
       it.group.position.x = v[0]; it.group.position.z = v[1]; it.group.rotation.y = v[2]; it.group.updateMatrixWorld(true);
@@ -2478,7 +2474,7 @@ const DeskSetup = (() => {
     }
   }
   function resetAll() {
-    Object.assign(SD, { x0: 2.78, x1: W - 0.015, z0: 2.9, z1: 5.5 }); buildDesk(); if (studioOn) Object.assign(DESK, studioBounds());
+    for (const k of Object.values(DK)) { k.x = k.home[0]; k.z = k.home[1]; } placeDesks(); if (studioOn) Object.assign(DESK, studioBounds());
     for (const it of Object.values(items)) { const h = it.home; it.group.position.set(h.x, h.y, h.z); it.group.rotation.y = h.ry; it.group.updateMatrixWorld(true); }
     for (const c of cableList) c.via = c.home.map((p) => p.clone());
     select(null); refreshCables(); save(); invalidate({ shadows: true });
@@ -2501,33 +2497,40 @@ const DeskSetup = (() => {
     wp(X1 - X0, HH, (X0 + X1) / 2, Z1, Math.PI);
     const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, Z1 - Z0), mat(0xd2d2ce, 0.8)); skirt.position.set(X1 - 0.01, 0.04, (Z0 + Z1) / 2); studioG.add(skirt);
   }
-  const SD = { x0: 2.78, x1: W - 0.015, z0: 2.9, z1: 5.5 };
-  const deskG = new THREE.Group(); deskG.userData.studioDesk = true; studioG.add(deskG);
-  function buildDesk() {
-    deskG.children.slice().forEach((c) => { c.geometry?.dispose(); deskG.remove(c); });
-    const topM = mat(0xf1f1ef, 0.6), legM = mat(0x2f3337, 0.5, 0.3), { x0: dx0, x1: dx1, z0: dz0, z1: dz1 } = SD;
-    B(deskG, topM, dx1 - dx0, 0.03, dz1 - dz0, (dx0 + dx1) / 2, Y - 0.015, (dz0 + dz1) / 2);
-    const nz = Math.max(2, Math.round((dz1 - dz0) / 1.3) + 1);
-    for (const lx of [dx0 + 0.06, dx1 - 0.06]) for (let k = 0; k < nz; k++) B(deskG, legM, 0.045, Y - 0.03, 0.045, lx, (Y - 0.03) / 2, dz0 + 0.06 + (dz1 - dz0 - 0.12) * k / (nz - 1));
-    B(deskG, legM, dx1 - dx0 - 0.12, 0.04, 0.03, (dx0 + dx1) / 2, Y - 0.05, dz0 + 0.06);
-    B(deskG, legM, dx1 - dx0 - 0.12, 0.04, 0.03, (dx0 + dx1) / 2, Y - 0.05, dz1 - 0.06);
+  // โต๊ะจริง 2 ตัวต่อกันเป็นรูปตัว L (เหมือนในห้อง): 100×60 ชิดผนัง + 120×60 ยื่นออกมา — ลากแยกกันได้
+  const deskG = new THREE.Group(); studioG.add(deskG);
+  const DK = {
+    A: { id: 'A', name: 'โต๊ะ 100×60 (ชิดผนัง)', w: 1.0, d: 0.6, x: W - 0.30, z: 4.49, rot: 90, home: [W - 0.30, 4.49] },
+    B: { id: 'B', name: 'โต๊ะ 120×60 (ต่อฝั่งซ้าย)', w: 1.2, d: 0.6, x: W - 0.60, z: 3.69, rot: 180, home: [W - 0.60, 3.69] },
+  };
+  const deskRect = (k) => { const q = ((k.rot % 180) + 180) % 180 === 90 ? [k.d, k.w] : [k.w, k.d]; return { x0: k.x - q[0] / 2, x1: k.x + q[0] / 2, z0: k.z - q[1] / 2, z1: k.z + q[1] / 2 }; };
+  for (const k of Object.values(DK)) {
+    k.g = BUILD.desk({ w: k.w, d: k.d, h: Y, color: '#f1f1ef' });
+    k.g.userData.deskId = k.id; deskG.add(k.g);
   }
-  buildDesk();
+  function placeDesks() { for (const k of Object.values(DK)) { k.g.position.set(k.x, 0, k.z); k.g.rotation.y = deg(k.rot); k.g.updateMatrixWorld(true); } }
+  placeDesks();
   let studioOn = false, savedVis = null;
   const MAIN_DESK = { ...DESK };
-  const studioBounds = () => ({ x0: SD.x0 + 0.05, x1: Math.min(W - 0.02, SD.x1 - 0.02), z0: SD.z0 + 0.05, z1: SD.z1 - 0.05 });
-  function setDeskRect(r) {
-    Object.assign(SD, r); buildDesk();
-    if (studioOn) Object.assign(DESK, studioBounds());
-    if (selDesk) outline.setFromObject(deskG);
-    invalidate({ shadows: true });
+  const studioBounds = () => {
+    const a = deskRect(DK.A), b = deskRect(DK.B);
+    return { x0: Math.min(a.x0, b.x0) + 0.05, x1: Math.min(W - 0.02, Math.max(a.x1, b.x1) - 0.02), z0: Math.min(a.z0, b.z0) + 0.05, z1: Math.max(a.z1, b.z1) - 0.05 };
+  };
+  // ลากโต๊ะ = พาของบนโต๊ะ + ปลั๊กราง + จุดดัดสายที่อยู่บริเวณโต๊ะนั้นไปด้วย
+  function deskMembers(k) {
+    const r = deskRect(k), inside = (x, z, m = 0.0) => x >= r.x0 - m && x <= r.x1 + m && z >= r.z0 - m && z <= r.z1 + m;
+    const mine = Object.values(items).filter((it) => it.id !== 'wall' && inside(it.group.position.x, it.group.position.z));
+    const other = k.id === 'A' ? DK.B : DK.A, ro = deskRect(other);
+    const vias = [];
+    for (const c of cableList) c.via.forEach((p) => { if (p.y > 0.3 && p.y < 1.7 && inside(p.x, p.z, 0.03) && !(p.x >= ro.x0 && p.x <= ro.x1 && p.z >= ro.z0 && p.z <= ro.z1 && !inside(p.x, p.z))) vias.push(p); });
+    return { mine, vias };
   }
-  function moveAll(dx, dz) {   // ลากโต๊ะ = พาทุกชิ้น + จุดดัดสายไปด้วย (ปลั๊กผนังอยู่กับผนัง)
-    SD.x0 += dx; SD.x1 += dx; SD.z0 += dz; SD.z1 += dz;
-    for (const it of Object.values(items)) if (it.id !== 'wall') { it.group.position.x += dx; it.group.position.z += dz; it.group.updateMatrixWorld(true); }
-    for (const c of cableList) c.via.forEach((p) => { p.x += dx; p.z += dz; });
-    buildDesk(); Object.assign(DESK, studioBounds());
-    refreshCables(); outline.setFromObject(deskG);
+  function moveDesk(k, mem, dx, dz) {
+    k.x += dx; k.z += dz; placeDesks();
+    for (const it of mem.mine) { it.group.position.x += dx; it.group.position.z += dz; it.group.updateMatrixWorld(true); }
+    for (const p of mem.vias) { p.x += dx; p.z += dz; }
+    Object.assign(DESK, studioBounds());
+    refreshCables(); outline.setFromObject(k.g);
   }
   function enterStudio() {
     if (studioOn) return;
