@@ -7,6 +7,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  // ตั้งธีมก่อนวาดหน้า กันจอกะพริบ: ค่าที่บันทึกไว้ → ไม่งั้นตามระบบ
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('dreamrooms-theme'); } catch (e) {}
+    if (t !== 'dark' && t !== 'light') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
 <style>
   :root {
     --bg: #e9eef1;
@@ -19,6 +28,27 @@
     --accent-ink: #7a4a22;
     --warn: #b3261e;
     --night: #1d2633;
+    --btn: #fff;
+    --chip: rgba(255, 255, 255, 0.85);
+    --chip-ink: #2b2f33;
+    --hover: rgba(0, 0, 0, 0.04);
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14181d;
+    --panel: rgba(30, 35, 41, 0.93);
+    --ink: #e6e9ec;
+    --muted: #98a1a9;
+    --line: rgba(230, 233, 236, 0.16);
+    --accent: #d68f56;
+    --accent-soft: #3a2c20;
+    --accent-ink: #f0c9a4;
+    --warn: #e5574d;
+    --btn: #2a3038;
+    --chip: rgba(30, 35, 41, 0.85);
+    --chip-ink: #e6e9ec;
+    --hover: rgba(255, 255, 255, 0.07);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -35,7 +65,7 @@
 
   button {
     font: inherit; cursor: pointer; color: var(--ink);
-    border: 1px solid var(--line); background: #fff; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--btn); border-radius: 8px;
   }
   button:hover { border-color: var(--accent); }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -53,6 +83,8 @@
   #panel .sub { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
   #panel section { margin-top: 14px; }
   .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  #theme-btn { font-size: 14px; border-radius: 999px; padding: 2px 10px; line-height: 1.5; }
+  .head-btns { display: flex; gap: 6px; align-items: center; }
   #more-btn { display: none; font-size: 12.5px; border-radius: 999px; padding: 3px 12px; white-space: nowrap; }
   .label {
     font-size: 11.5px; font-weight: 600; letter-spacing: .04em;
@@ -60,7 +92,8 @@
   }
   .seg { display: grid; gap: 6px; }
   .seg.five { grid-template-columns: repeat(5, 1fr); }
-  .seg.five button { padding: 6px 2px; font-size: 12.5px; }
+  .seg.six { grid-template-columns: repeat(3, 1fr); }
+  .seg.five button, .seg.six button { padding: 6px 2px; font-size: 12.5px; }
   .seg.two { grid-template-columns: 1fr 1fr; margin-top: 6px; }
   .seg button { font-size: 13px; padding: 6px 4px; }
   .seg button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
@@ -76,7 +109,7 @@
     width: 100%; text-align: left; border: 0; border-radius: 6px; background: transparent;
     padding: 5px 6px; display: block; line-height: 1.35;
   }
-  #fList .item:hover { background: rgba(0, 0, 0, 0.04); }
+  #fList .item:hover { background: var(--hover); }
   #fList .item.on { background: var(--accent-soft); }
   #fList .nm { font-size: 13px; }
   #fList .dim { display: block; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
@@ -95,7 +128,7 @@
   details summary { cursor: pointer; color: var(--ink); font-weight: 500; }
   details p { margin: 6px 0 0; }
 
-  #selbar {
+  #selbar, #dsbar {
     position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px;
     display: flex; align-items: center; gap: 6px;
     background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
@@ -105,7 +138,9 @@
   .selinfo { display: flex; flex-direction: column; line-height: 1.25; margin-right: 6px; min-width: 0; }
   .selinfo b { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .selinfo span { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #selbar button { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
+  #dsbar { top: auto; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); right: auto; left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); }
+  #dsbar[hidden] { display: none; }
+  #selbar button, #dsbar button { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
   #bDel { color: var(--warn); }
 
   #toast {
@@ -150,10 +185,16 @@
 
   .tag {
     font: 500 12px "IBM Plex Sans Thai", system-ui, sans-serif;
-    color: #2b2f33; background: rgba(255, 255, 255, 0.85);
+    color: var(--chip-ink); background: var(--chip);
     border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 6px; padding: 1px 7px;
     white-space: nowrap;
   }
+  .plab {
+    font: 500 10.5px "IBM Plex Sans Thai", system-ui, sans-serif;
+    color: #fff; background: rgba(20, 24, 30, 0.82); border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 5px; padding: 0 6px; white-space: nowrap; pointer-events: none;
+  }
+  .plab.idle { opacity: 0.55; }
   .gap {
     font: 600 11.5px "IBM Plex Sans Thai", system-ui, sans-serif;
     color: #fff; background: var(--accent); border-radius: 999px; padding: 0 7px;
@@ -206,18 +247,23 @@
       <h1>The Four Lights บางแสน · 28 ตร.ม.</h1>
       <p class="sub">ห้องหลัก 4.00 × 4.30 ม. (วัดจริง) · รวมห้องน้ำ + ระเบียงลึก 6.83 ม. · เพดาน 2.60 ม.</p>
     </div>
-    <button id="more-btn" type="button" aria-expanded="false" aria-controls="more">เมนู</button>
+    <div class="head-btns">
+      <button id="theme-btn" type="button" aria-label="สลับธีมมืด/สว่าง" title="ธีมมืด/สว่าง">🌙</button>
+      <button id="more-btn" type="button" aria-expanded="false" aria-controls="more">เมนู</button>
+    </div>
   </div>
 
   <section>
     <div class="label">มุมมอง</div>
-    <div class="seg five" id="views">
+    <div class="seg six" id="views">
       <button type="button" data-view="top">มุมบน</button>
       <button type="button" data-view="entry">ประตู</button>
       <button type="button" data-view="orbit" class="on">รอบห้อง</button>
       <button type="button" data-view="bath">ห้องน้ำ</button>
       <button type="button" data-view="balcony">ระเบียง</button>
+      <button type="button" data-view="desk">โต๊ะคอม</button>
     </div>
+    <button type="button" id="bStudio" class="wide" style="width:100%; margin-top:6px; padding:6px 4px; font-size:13px">เข้าห้องโต๊ะคอม (ห้องโล่ง กว้างขึ้น)</button>
     <div class="seg two" id="light">
       <button type="button" data-mode="day" class="on">กลางวัน</button>
       <button type="button" data-mode="night">กลางคืน</button>
@@ -242,6 +288,11 @@
       <label><input type="checkbox" id="tLabels" checked> ป้ายชื่อ</label>
       <label><input type="checkbox" id="tCurtain"> ปิดม่าน</label>
       <label><input type="checkbox" id="tAccent" checked> ผนังสีเหลือง</label>
+      <label><input type="checkbox" id="tGear" checked> อุปกรณ์โต๊ะคอม</label>
+      <label><input type="checkbox" id="tCables" checked> สายไฟ</label>
+      <label><input type="checkbox" id="tPorts"> ป้ายพอร์ต</label>
+      <label><input type="checkbox" id="tEditDesk" checked> แก้ไข/ลากโต๊ะคอม</label>
+      <button type="button" id="bDeskReset" class="wide" style="grid-column: 1 / -1">รีเซ็ตโต๊ะคอมทั้งชุด</button>
     </section>
 
     <section>
@@ -270,6 +321,15 @@
   <button type="button" id="bRot">หมุน 90°</button>
   <button type="button" id="bDel">ลบ</button>
   <button type="button" id="bDesel" aria-label="ยกเลิกการเลือก">✕</button>
+</div>
+
+<div id="dsbar" hidden>
+  <div class="selinfo"><b id="dsName"></b><span id="dsHint"></span></div>
+  <button type="button" id="dsRotL" title="หมุนซ้าย (Q)">⟲</button>
+  <button type="button" id="dsRotR" title="หมุนขวา (E)">⟳</button>
+  <button type="button" id="dsDelPt">ลบจุดดัด</button>
+  <button type="button" id="dsReset">คืนค่า</button>
+  <button type="button" id="dsClose" aria-label="ยกเลิกการเลือก">✕</button>
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
@@ -395,7 +455,9 @@ const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labe
 labelRenderer.setSize(innerWidth, innerHeight);
 
 const scene = new THREE.Scene();
-const SKY = { day: new THREE.Color(0xe9eef1), night: new THREE.Color(0x141b26) };
+const SKY_DAY = { light: 0xe9eef1, dark: 0x262c33 };
+const isDark = () => document.documentElement.dataset.theme === 'dark';
+const SKY = { day: new THREE.Color(isDark() ? SKY_DAY.dark : SKY_DAY.light), night: new THREE.Color(0x141b26) };
 scene.background = SKY.day.clone();
 
 const persp = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.05, 100);
@@ -1422,6 +1484,7 @@ function place(f) {
   if (o) { o.position.set(f.x, 0, f.z); o.rotation.y = deg(f.rotation || 0); }
   const t = tags.get(f.id);
   if (t) t.position.set(f.x, 2.72, f.z);
+  DeskSetup.sync();
 }
 
 function rebuild() {
@@ -1443,7 +1506,1006 @@ function rebuild() {
   renderList();
   updateSelection();
   persist();
+  DeskSetup.sync();
 }
+
+// =====================================================================
+// โต๊ะคอม (จัดตามรูปจริง) + การเดินสายไฟ — ลากได้ทุกชิ้น ลากสายได้ทุกเส้น
+//   ชิ้นส่วน: ASUS PG32UCDM (แขนจอ) · Xiaomi G27 (แนวตั้ง แขนขาว) · MacBook Air M5 · ROG Strix 15 บนขาตั้ง
+//             Wooting 60HE · Razer Viper V3 Pro ขาว + ดองเกิล · Artisan Ninja FX XL · รางตะแกรง + ปลั๊กราง + อะแดปเตอร์
+//   โหมดแก้ไข (มุมมอง "โต๊ะคอม"): ลากชิ้นส่วน · คลิกสายแล้วลากตรงไหนก็ได้เพื่อดัดสาย · ดับเบิลคลิกชิ้น = ซูมเข้าไปดู
+//   พิกัดโลก · ตั้งต้นผูกกับโต๊ะ 2 ตัวในตำแหน่งตั้งต้น (ย้ายโต๊ะ → ชุดนี้ซ่อนเอง) · บันทึกตำแหน่งใน localStorage
+// =====================================================================
+const DeskSetup = (() => {
+  const Y = 0.75;                                   // ผิวโต๊ะ
+  const FRONT_X = -Math.PI / 2;                     // ด้านหน้าของชิ้น (+Z ในพิกัดตัวเอง) หัน −X = ทางผู้ใช้
+  const STORE = 'dreamrooms.desk.v2';
+  const root = new THREE.Group(); root.name = 'deskSetup';
+  const gearG = new THREE.Group(), cablesG = new THREE.Group(), tagsG = new THREE.Group(), handlesG = new THREE.Group();
+  root.add(gearG, cablesG, tagsG, handlesG);
+  scene.add(root);
+  let enabled = true, editing = true;
+
+  const EXPECT = [
+    { type: 'desk100', x: W - 0.30, z: 4.49, rotation: 90 },
+    { type: 'desk',    x: W - 0.60, z: 3.69, rotation: 180 },
+  ];
+
+  // ---------- วัสดุ ----------
+  const M = {
+    plastic: mat(0x1b1c1f, 0.55, 0.05), plastic2: mat(0x35383d, 0.5, 0.1), rubber: mat(0x0b0b0c, 0.8),
+    metal: mat(0x2b2e33, 0.35, 0.8), silver: mat(0xcfd2d6, 0.3, 0.85), steel: mat(0xb6bbc0, 0.3, 0.9), well: mat(0x040405, 0.9),
+    usb3: mat(0x2a63c8, 0.5), white: mat(0xf1f0ec, 0.5), strip: mat(0xecebe6, 0.55), grommet: mat(0x17181a, 0.6),
+    tray: mat(0x1a1b1d, 0.5, 0.5), velcro: mat(0xe8742a, 0.8), armBlack: mat(0x18191b, 0.55, 0.3), armWhite: mat(0xe9e8e3, 0.5, 0.1),
+    cBraid: null, cBlack: mat(0x0d0d0f, 0.65), cWhite: mat(0xeeeeea, 0.6), cSilver: mat(0xc9ccd0, 0.5, 0.3), cGray: mat(0x3a3d42, 0.7),
+    led: new THREE.MeshBasicMaterial({ color: 0x3a8bff }), ledW: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    handle: new THREE.MeshBasicMaterial({ color: 0xff8a2a, depthTest: false, transparent: true, opacity: 0.95 }),
+    handleSel: new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }),
+    proxy: new THREE.MeshBasicMaterial({ visible: false }),
+  };
+
+  M.cBraid = new THREE.MeshStandardMaterial({ map: canvasTexture(64, (c, sz) => {
+    c.fillStyle = '#121212'; c.fillRect(0, 0, sz, sz); c.fillStyle = '#e2b40c';
+    for (let i = 0; i < sz; i += 16) { c.fillRect(i, 0, 8, sz / 2); c.fillRect(i + 8, sz / 2, 8, sz / 2); }
+  }, 160, 1), roughness: 0.9 });
+  // ---------- ตัวช่วยรูปทรง ----------
+  const B = (parent, material, w, h, d, x, y, z, { cast = true, rx = 0, ry = 0, rz = 0 } = {}) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+    mesh.position.set(x, y, z);
+    if (rx || ry || rz) mesh.rotation.set(rx, ry, rz);
+    mesh.castShadow = cast; mesh.receiveShadow = true;
+    parent.add(mesh);
+    return mesh;
+  };
+  const mergeBoxes = (parent, material, parts, { cast = true } = {}) => {
+    const geos = parts.map((p) => new THREE.BoxGeometry(p.w, p.h, p.d).translate(p.x, p.y, p.z));
+    const mesh = new THREE.Mesh(mergeGeometries(geos), material);
+    geos.forEach((g) => g.dispose());
+    mesh.castShadow = cast; mesh.receiveShadow = true;
+    parent.add(mesh);
+    return mesh;
+  };
+  function slab(w, t, d, r, material, bev = Math.min(0.0015, t / 3)) {   // แผ่นขอบมน: กว้าง X · หนา Y (ฐาน y=0) · ลึก Z
+    const hw = w / 2 - bev, hd = d / 2 - bev, rr = Math.max(0.0005, Math.min(r - bev, hw, hd));
+    const s = new THREE.Shape();
+    s.moveTo(-hw + rr, -hd);
+    s.lineTo(hw - rr, -hd); s.absarc(hw - rr, -hd + rr, rr, -Math.PI / 2, 0, false);
+    s.lineTo(hw, hd - rr); s.absarc(hw - rr, hd - rr, rr, 0, Math.PI / 2, false);
+    s.lineTo(-hw + rr, hd); s.absarc(-hw + rr, hd - rr, rr, Math.PI / 2, Math.PI, false);
+    s.lineTo(-hw, -hd + rr); s.absarc(-hw + rr, -hd + rr, rr, Math.PI, Math.PI * 1.5, false);
+    const g = new THREE.ExtrudeGeometry(s, { depth: Math.max(0.0002, t - 2 * bev), bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: 2, curveSegments: 8 });
+    g.rotateX(-Math.PI / 2); g.translate(0, bev, 0);
+    const mesh = new THREE.Mesh(g, material);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    return mesh;
+  }
+  const orient = (obj, n, w) => {
+    const z = n.clone().normalize();
+    const x = w.clone().sub(z.clone().multiplyScalar(w.dot(z))).normalize();
+    const y = new V().crossVectors(z, x);
+    obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+  };
+  // แท่ง/ข้อต่อระหว่างสองจุด (แขนจอ ขาตั้ง)
+  function bar(parent, material, p1, p2, t = 0.024, h = 0.02) {
+    const d = p2.clone().sub(p1), len = d.length();
+    const m = new THREE.Mesh(new THREE.BoxGeometry(t, h, len + t * 0.5), material);
+    m.position.copy(p1).addScaledVector(d, 0.5);
+    m.quaternion.setFromUnitVectors(new V(0, 0, 1), d.normalize());
+    m.castShadow = m.receiveShadow = true; parent.add(m);
+    return m;
+  }
+  function pole(parent, material, x, y0, y1, z, r = 0.0165) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, y1 - y0, 16), material);
+    m.position.set(x, (y0 + y1) / 2, z); m.castShadow = m.receiveShadow = true; parent.add(m);
+    return m;
+  }
+  function disc(parent, material, x, y, z, r, h) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.03, h, 28), material);
+    m.position.set(x, y + h / 2, z); m.castShadow = m.receiveShadow = true; parent.add(m);
+    return m;
+  }
+
+  // ---------- พอร์ต ----------
+  const PORT = {
+    usba: [0.0135, 0.0062], usbc: [0.0092, 0.0036], usbb: [0.0125, 0.0112], hdmi: [0.0155, 0.0068],
+    dp: [0.0175, 0.0068], ac: [0.0265, 0.0170], dc: [0.0075, 0.0075], audio: [0.0068, 0.0068], magsafe: [0.0128, 0.0042],
+  };
+  function portWell(parent, kind, p, n, w) {
+    const [pw, ph] = PORT[kind];
+    const g = new THREE.Group(); g.position.copy(p); orient(g, n, w);
+    B(g, M.well, pw + 0.0016, ph + 0.0016, 0.003, 0, 0, 0.0005, { cast: false });
+    if (kind === 'usba') B(g, M.usb3, pw - 0.003, 0.0016, 0.0022, 0, 0, 0.0016, { cast: false });
+    if (kind === 'usbb') B(g, M.steel, pw - 0.003, ph - 0.003, 0.0015, 0, 0, 0.0018, { cast: false });
+    if (kind === 'usbc' || kind === 'magsafe') B(g, M.steel, pw - 0.003, 0.0011, 0.0022, 0, 0, 0.0016, { cast: false });
+    if (kind === 'ac') for (const s of [-1, 0, 1]) B(g, M.steel, 0.0022, 0.0022, 0.002, s * 0.0075, s === 0 ? 0.0042 : -0.0030, 0.0016, { cast: false });
+    parent.add(g);
+  }
+
+  // ---------- พื้นผิวจอ ----------
+  function screenTex(kind, w, h) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, w, h);
+    if (kind === 'ocean') { g.addColorStop(0, '#031a4a'); g.addColorStop(0.5, '#0a56c8'); g.addColorStop(1, '#2a8fe8'); }
+    else if (kind === 'dark') { g.addColorStop(0, '#0b0d12'); g.addColorStop(1, '#171b24'); }
+    else { g.addColorStop(0, '#0d1117'); g.addColorStop(1, '#1a2230'); }
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    if (kind === 'ocean') {
+      for (let i = 0; i < 40; i++) { x.fillStyle = `rgba(255,255,255,${0.02 + Math.random() * 0.06})`; x.beginPath(); x.ellipse(Math.random() * w, Math.random() * h, 40 + Math.random() * 120, 6 + Math.random() * 14, 0.3, 0, 7); x.fill(); }
+    }
+    x.fillStyle = 'rgba(255,255,255,0.14)'; x.fillRect(0, 0, w, h * 0.035);
+    x.fillStyle = 'rgba(255,255,255,0.75)';
+    for (let i = 0; i < 6; i++) x.fillRect(w * (0.03 + i * 0.045), h * 0.012, w * 0.03, h * 0.012);
+    x.fillRect(w * 0.9, h * 0.012, w * 0.07, h * 0.012);
+    const win = (x0, y0, ww, hh, dark) => {
+      x.fillStyle = dark ? 'rgba(18,20,28,0.92)' : 'rgba(245,246,250,0.94)';
+      x.beginPath(); x.roundRect(w * x0, h * y0, w * ww, h * hh, 10); x.fill();
+      ['#ff5f57', '#febc2e', '#28c840'].forEach((cl, i) => { x.fillStyle = cl; x.beginPath(); x.arc(w * (x0 + 0.015 + i * 0.015), h * (y0 + 0.022), 4, 0, 7); x.fill(); });
+      for (let i = 0; i < 11; i++) {
+        x.fillStyle = dark ? ['#7aa2f7', '#9ece6a', '#e0af68', '#bb9af7'][i % 4] : '#b9bcc6'; x.globalAlpha = 0.85;
+        x.fillRect(w * (x0 + 0.02 + (i % 3) * 0.02), h * (y0 + 0.08 + i * 0.055), w * (ww * (0.25 + ((i * 37) % 50) / 100)), h * 0.014);
+        x.globalAlpha = 1;
+      }
+    };
+    if (kind === 'ocean') { win(0.06, 0.12, 0.5, 0.7, true); win(0.42, 0.2, 0.5, 0.62, false); }
+    if (kind === 'ocean' || kind === 'dark') {
+      x.fillStyle = 'rgba(255,255,255,0.2)'; x.beginPath(); x.roundRect(w * 0.28, h * 0.9, w * 0.44, h * 0.08, 14); x.fill();
+      ['#4aa3ff', '#ff6b6b', '#ffd166', '#06d6a0', '#a78bfa', '#f78fb3', '#5eead4', '#fb923c'].forEach((cl, i) => { x.fillStyle = cl; x.beginPath(); x.roundRect(w * (0.295 + i * 0.052), h * 0.905, w * 0.04, h * 0.068, 6); x.fill(); });
+    } else {
+      x.fillStyle = 'rgba(14,16,22,0.95)'; x.beginPath(); x.roundRect(w * 0.08, h * 0.12, w * 0.84, h * 0.72, 10); x.fill();
+      for (let i = 0; i < 16; i++) { x.fillStyle = ['#7ee787', '#79c0ff', '#d2a8ff', '#ffa657'][i % 4]; x.globalAlpha = 0.8; x.fillRect(w * 0.11, h * (0.17 + i * 0.038), w * (0.15 + ((i * 53) % 60) / 100 * 0.5), h * 0.014); x.globalAlpha = 1; }
+    }
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    return tex;
+  }
+  const screenMat = (kind, cw, ch, k = 0.9) => new THREE.MeshStandardMaterial({
+    color: 0x030304, emissive: 0xffffff, emissiveMap: screenTex(kind, cw, ch), emissiveIntensity: k,
+    roughness: 0.1, metalness: 0.1, envMap, envMapIntensity: 0.35,
+  });
+
+  // =====================================================================
+  // ชิ้นส่วน — แต่ละตัว return { g, ports } · ports[name] = { obj, p, n, w, label }
+  // =====================================================================
+  const mkPort = (ports, name, obj, p, n, w, label) => { ports[name] = { obj, p: p.clone(), n: n.clone(), w: w.clone(), label }; };
+  const NZ = new V(0, 0, -1), PX = new V(1, 0, 0);
+
+  // ---------- ASUS ROG Swift OLED PG32UCDM บนแขนจอสีดำ (ฐานกลม ยึดรูโต๊ะ) ----------
+  function buildAsus() {
+    const g = new THREE.Group(), ports = {};
+    const PW = 0.717, PH = 0.418, cy = 0.11 + PH / 2 + 0.03;
+    B(g, M.plastic, PW, PH, 0.012, 0, cy, -0.026);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.703, 0.398), screenMat('ocean', 1024, 580, 0.95));
+    scr.position.set(0, cy + 0.001, -0.0198); g.add(scr);
+    B(g, M.ledW, 0.003, 0.0012, 0.001, 0.31, cy - PH / 2 + 0.005, -0.0195, { cast: false });
+    B(g, M.plastic2, 0.56, 0.27, 0.030, 0, cy, -0.047);
+    B(g, M.plastic2, 0.30, 0.20, 0.023, 0, cy + 0.01, -0.0735);
+    for (let i = -4; i <= 4; i++) B(g, M.rubber, 0.004, 0.10, 0.001, i * 0.03, cy + 0.06, -0.0625, { cast: false });
+    // พอร์ตอยู่ใต้ตัวหลังจอ หันลงล่าง (ตามรูปจริง) · มองจากด้านหลัง ซ้าย→ขวา: AC · USB-A ×3 · USB-B | (แกนขา) | HDMI ×2 · DP · USB-C · หูฟัง
+    const yB = cy - 0.135, ND = new V(0, -1, 0);
+    for (const [name, kind, x, z, label] of [
+      ['ac', 'ac', 0.222, -0.050, 'AC 100–240V'], ['usba1', 'usba', 0.165, -0.050, 'USB-A · คีย์บอร์ด'],
+      ['usba2', 'usba', 0.130, -0.041, 'USB-A · ดองเกิลเมาส์'], ['usba3', 'usba', 0.130, -0.061, 'USB-A (ว่าง)'],
+      ['usbb', 'usbb', 0.090, -0.050, 'USB-B upstream (ว่าง)'],
+      ['hdmi1', 'hdmi', -0.085, -0.050, 'HDMI 2.1 (ว่าง)'], ['hdmi2', 'hdmi', -0.125, -0.050, 'HDMI 2.1 (ว่าง)'],
+      ['dp', 'dp', -0.168, -0.050, 'DisplayPort 1.4 (ว่าง)'], ['usbc', 'usbc', -0.205, -0.050, 'USB-C ← MacBook (ภาพ+USB/KVM)'],
+      ['audio', 'audio', -0.232, -0.050, 'หูฟัง 3.5 มม. (ว่าง)'],
+    ]) {
+      const p = new V(x, yB, z); portWell(g, kind, p, ND, PX); mkPort(ports, name, g, p, ND, PX, label);
+    }
+    // แขนจอ: ฐานกลม + เสา + ข้อต่อ 2 ท่อน + ฝาจับ VESA
+    const px = 0.33, pz = -0.097, top = 0.30;
+    disc(g, M.armBlack, px, 0, pz, 0.032, 0.012);
+    pole(g, M.armBlack, px, 0.012, top, pz);
+    const j1 = new V(px, top, pz), j2 = new V(0.14, top + 0.02, -0.105), hd = new V(0, cy, -0.0905);
+    bar(g, M.armBlack, j1, j2, 0.034, 0.030); bar(g, M.armBlack, j2, hd, 0.030, 0.026);
+    for (const j of [j1, j2]) { const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.019, 0.034, 16), M.armBlack); cyl.position.copy(j); cyl.castShadow = true; g.add(cyl); }
+    B(g, M.armBlack, 0.10, 0.10, 0.004, 0, cy, -0.0875);
+    return { g, ports };
+  }
+
+  // ---------- Xiaomi G27 แนวตั้ง บนแขนสีขาว ----------
+  function buildXiaomi() {
+    const g = new THREE.Group(), ports = {};
+    const PW = 0.614, PH = 0.362, cy = 0.05 + PW / 2;
+    const mon = new THREE.Group(); mon.position.set(0, cy, 0); mon.rotation.z = -Math.PI / 2; g.add(mon);   // หมุนเป็นแนวตั้ง
+    B(mon, M.plastic, PW, PH, 0.008, 0, 0, -0.004);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.602, 0.346), screenMat('term', 1024, 590, 0.85));
+    scr.position.set(0, 0.003 - 0.0, 0.0002); mon.add(scr);
+    B(mon, M.plastic2, 0.40, 0.20, 0.022, 0, 0, -0.019);
+    const zR = -0.030, yP = -0.10 + 0.016;
+    for (const [name, kind, x, label] of [
+      ['dc', 'dc', 0.045, 'DC ไฟเข้า ← adapter'], ['audio', 'audio', 0.080, 'เสียง 3.5 มม. (ว่าง)'],
+      ['hdmi1', 'hdmi', 0.115, 'HDMI (ว่าง)'], ['hdmi2', 'hdmi', 0.150, 'HDMI (ว่าง)'], ['dp', 'dp', 0.182, 'DisplayPort ← MacBook'],
+    ]) {
+      const p = new V(x, yP, zR); portWell(mon, kind, p, NZ, PX); mkPort(ports, name, mon, p, NZ, PX, label);
+    }
+    const px = 0.0, pz = -0.066, top = 0.30;
+    disc(g, M.armWhite, px, 0, pz, 0.032, 0.012);
+    pole(g, M.armWhite, px, 0.012, top, pz);
+    const j1 = new V(px, top, pz), j2 = new V(-0.11, top + 0.02, -0.075), hd = new V(0, cy, -0.037);
+    bar(g, M.armWhite, j1, j2, 0.034, 0.030); bar(g, M.armWhite, j2, hd, 0.030, 0.026);
+    for (const j of [j1, j2]) { const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.019, 0.034, 16), M.armWhite); cyl.position.copy(j); cyl.castShadow = true; g.add(cyl); }
+    B(g, M.armWhite, 0.10, 0.10, 0.004, 0, cy, -0.035);
+    return { g, ports };
+  }
+
+  // ---------- MacBook Air M5 13" (สี Midnight) ----------
+  function buildMac() {
+    const g = new THREE.Group(), ports = {};
+    const BW = 0.304, BD = 0.215, BT = 0.0113, body = mat(0x2d3542, 0.32, 0.75);
+    g.add(slab(BW, BT, BD, 0.012, body, 0.002));
+    const deckTex = (() => {
+      const c = document.createElement('canvas'); c.width = 1024; c.height = 724; const x = c.getContext('2d');
+      x.fillStyle = '#0d0f14'; x.beginPath(); x.roundRect(30, 8, 964, 378, 10); x.fill();
+      x.fillStyle = '#242830';
+      [14, 14, 14, 13, 12, 8].forEach((n, r) => {
+        const kh = r === 0 ? 33 : 58, y = r === 0 ? 16 : 54 + (r - 1) * 66, kw = (964 - 30) / n;
+        for (let i = 0; i < n; i++) { x.beginPath(); x.roundRect(40 + i * kw, y, kw - 6, kh, 4); x.fill(); }
+      });
+      x.strokeStyle = 'rgba(255,255,255,0.14)'; x.lineWidth = 2; x.beginPath(); x.roundRect(327, 470, 370, 240, 12); x.stroke();
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+    })();
+    const deck = new THREE.Mesh(new THREE.PlaneGeometry(0.29, 0.205).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: deckTex, transparent: true, roughness: 0.5, metalness: 0.2, depthWrite: false }));
+    deck.position.set(0, BT + 0.0003, 0); deck.receiveShadow = true; g.add(deck);
+    const hinge = new THREE.Group(); hinge.position.set(0, BT - 0.0004, -BD / 2 + 0.004); hinge.rotation.x = -deg(105);
+    const lid = slab(BW, 0.0058, BD, 0.010, body, 0.0015); lid.position.set(0, -0.0029, BD / 2); hinge.add(lid);
+    const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.292, 0.193).rotateX(Math.PI / 2), screenMat('ocean', 1024, 676, 0.9));
+    sc.position.set(0, -0.0032, 0.1125); hinge.add(sc);
+    const bez = new THREE.Mesh(new THREE.PlaneGeometry(0.300, 0.209).rotateX(Math.PI / 2), M.rubber);
+    bez.position.set(0, -0.0031, 0.1085); hinge.add(bez);
+    g.add(hinge);
+    const L = new V(-1, 0, 0), wz = new V(0, 0, 1), yP = BT / 2;
+    for (const [name, kind, z, label] of [
+      ['magsafe', 'magsafe', -0.0775, 'MagSafe 3 (ว่าง)'], ['tbA', 'usbc', -0.0255, 'USB-C/Thunderbolt 1 → ฮับ UGREEN'], ['tbB', 'usbc', 0.025, 'USB-C/Thunderbolt 2 (ว่าง)'],
+    ]) {
+      const p = new V(-BW / 2, yP, z); portWell(g, kind, p, L, wz); mkPort(ports, name, g, p, L, wz, label);
+    }
+    const ph = new V(BW / 2, yP, -0.05); portWell(g, 'audio', ph, new V(1, 0, 0), wz); mkPort(ports, 'phones', g, ph, new V(1, 0, 0), wz, 'แจ็คหูฟัง 3.5 มม. → ลำโพง');
+    return { g, ports };
+  }
+
+  // ---------- ROG Strix G15 บนถาด Ergonoz (แขนเสาสีดำ · ถาดเอียง) ----------
+  function buildRog() {
+    const g = new THREE.Group(), ports = {};
+    const steel = mat(0x141416, 0.55, 0.5);
+    // เสา + แขน + ถาด
+    disc(g, M.armBlack, 0.05, 0, -0.20, 0.036, 0.012);
+    pole(g, M.armBlack, 0.05, 0.012, 0.25, -0.20);
+    const tilt = new THREE.Group(); tilt.position.set(0, 0.13, 0.12); tilt.rotation.x = deg(22); g.add(tilt);   // ถาดเอียง ด้านหลังสูงกว่า
+    const j1 = new V(0.05, 0.25, -0.20), j2 = new V(0.03, 0.19, -0.075);
+    bar(g, M.armBlack, j1, j2, 0.032, 0.026);
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.019, 0.034, 16), M.armBlack); cyl.position.copy(j1); cyl.castShadow = true; g.add(cyl);
+    // แผ่นถาดเหล็กดำ 4 สกรู · 2 ช่องยาว · ยางกันลื่น · ตัวหนังสือ ERGONOZ
+    const trayTex = (() => {
+      const c = document.createElement('canvas'); c.width = 1024; c.height = 900; const x = c.getContext('2d');
+      x.fillStyle = '#131315'; x.fillRect(0, 0, 1024, 900);
+      x.fillStyle = '#050506';
+      for (const [x0, w] of [[700, 70], [790, 70]]) { x.beginPath(); x.roundRect(x0, 120, w, 520, 30); x.fill(); }
+      x.fillStyle = '#9aa0a8'; for (const [px, py] of [[220, 260], [400, 200], [430, 470], [260, 560]]) { x.beginPath(); x.arc(px, py, 14, 0, 7); x.fill(); }
+      x.fillStyle = 'rgba(210,214,220,0.85)'; x.font = '700 64px system-ui, sans-serif'; x.textAlign = 'left'; x.fillText('ERGONOZ', 90, 790);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+    })();
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.30).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: trayTex, roughness: 0.6, metalness: 0.3 }));
+    plate.position.set(0, 0.0031, -0.15); plate.receiveShadow = true; tilt.add(plate);
+    const plateBody = slab(0.34, 0.003, 0.30, 0.02, steel, 0.0006); plateBody.position.z = -0.15; tilt.add(plateBody);
+    for (const [px, pz] of [[-0.12, -0.03], [0.12, -0.03], [-0.12, -0.28], [0.12, -0.28]]) B(tilt, mat(0x0a0a0b, 0.9), 0.05, 0.004, 0.014, px, 0.005, pz, { cast: false });
+    // ตัวเครื่อง ROG Strix (สี Eclipse Gray ม่วงเทา)
+    const lap = new THREE.Group(); lap.position.set(0, 0.0075, -0.012); tilt.add(lap);
+    const BW = 0.354, BD = 0.259, BT = 0.0225, bodyM = mat(0x3b3d48, 0.5, 0.35), keyM = mat(0x17181b, 0.6);
+    const base = slab(BW, BT, BD, 0.012, bodyM, 0.002); base.position.z = -BD / 2; lap.add(base);
+    const kTex = (() => {
+      const c = document.createElement('canvas'); c.width = 1024; c.height = 700; const x = c.getContext('2d');
+      x.fillStyle = '#101114'; x.fillRect(0, 0, 1024, 250);
+      const rows = [15, 15, 14, 13, 12];
+      rows.forEach((n, r) => { const kw = 1000 / n; for (let i = 0; i < n; i++) {
+        const wasd = r === 2 && i >= 2 && i <= 4 || (r === 1 && i === 3);
+        x.fillStyle = wasd ? '#cfd1d3' : '#1c1d20'; x.beginPath(); x.roundRect(12 + i * kw, 8 + r * 47, kw - 6, 42, 5); x.fill(); } });
+      x.fillStyle = '#4a4d59'; x.beginPath(); x.roundRect(12, 262, 1000, 428, 14); x.fill();   // พื้นที่วางมือ
+      x.fillStyle = '#34363f'; x.beginPath(); x.roundRect(300, 330, 420, 280, 12); x.fill();   // ทัชแพด
+      x.fillStyle = '#f7c31f'; x.beginPath(); x.roundRect(760, 590, 200, 84, 8); x.fill();     // สติกเกอร์ GM
+      x.fillStyle = '#1a1a1a'; x.font = '900 52px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('GM', 860, 650);
+      x.fillStyle = '#b9bcc4'; x.fillRect(30, 590, 150, 34); x.fillStyle = '#76b900'; x.fillRect(30, 630, 150, 30);   // ป้าย Ryzen/RTX
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+    })();
+    const deck = new THREE.Mesh(new THREE.PlaneGeometry(0.34, BD - 0.02).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: kTex, roughness: 0.6 }));
+    deck.position.set(0, BT + 0.0004, -BD / 2 - 0.0); lap.add(deck);
+    const hinge = new THREE.Group(); hinge.position.set(0, BT, -BD + 0.008); hinge.rotation.x = -deg(105); lap.add(hinge);
+    const lid = slab(BW, 0.0075, 0.235, 0.010, bodyM, 0.0015); lid.position.set(0, -0.0038, 0.1175); hinge.add(lid);
+    const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.336, 0.194).rotateX(Math.PI / 2), screenMat('dark', 1024, 592, 0.3));
+    sc.position.set(0, -0.0042, 0.128); hinge.add(sc);
+    const bz = new THREE.Mesh(new THREE.PlaneGeometry(0.348, 0.226).rotateX(Math.PI / 2), M.rubber); bz.position.set(0, -0.0041, 0.117); hinge.add(bz);
+    // เสาบานพับสองข้าง + แถบช่องระบายอากาศด้านหลัง
+    for (const s of [-1, 1]) B(lap, mat(0x232428, 0.5), 0.028, 0.03, 0.034, s * (BW / 2 - 0.018), BT + 0.010, -BD + 0.014);
+    B(lap, mat(0x0c0c0e, 0.9), 0.24, 0.0018, 0.026, 0, BT + 0.0008, -BD + 0.030, { cast: false });
+    // พอร์ตด้านหลัง: USB-C (ต่อฮับ), HDMI, DC
+    const n = new V(0, 0, -1);
+    for (const [name, kind, x, label] of [['usbc', 'usbc', -0.115, 'USB-C · ต่อฮับ UGREEN'], ['hdmi', 'hdmi', -0.070, 'HDMI (ว่าง)'], ['dc', 'dc', 0.105, 'ROG Strix · DC ไฟเข้า']]) {
+      const p = new V(x, BT / 2, -BD); portWell(lap, kind, p, n, PX); mkPort(ports, name, lap, p, n, PX, label);
+    }
+    return { g, ports };
+  }
+
+  // ---------- ฮับ USB-C UGREEN (อลูมิเนียมเทา) ----------
+  function buildHub() {
+    const g = new THREE.Group(), ports = {};
+    B(g, mat(0x9a9ea6, 0.35, 0.8), 0.115, 0.014, 0.035, 0, 0.007, 0);
+    B(g, M.well, 0.008, 0.004, 0.002, 0.045, 0.007, 0.0185, { cast: false });
+    B(g, M.well, 0.008, 0.004, 0.002, 0.020, 0.007, 0.0185, { cast: false });
+    const p = new V(-0.0575, 0.007, 0), n = new V(-1, 0, 0);
+    portWell(g, 'usbc', p, n, new V(0, 0, 1)); mkPort(ports, 'out', g, p, n, new V(0, 0, 1), 'ฮับ · USB-C ออก');
+    return { g, ports };
+  }
+
+  // ---------- ของบนโต๊ะ: โรลออน · ตลับยา · ขวดไม้จิ้มฟัน · กรรไกรชมพู ----------
+  function buildRoll() {
+    const g = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.0225, 0.0225, 0.09, 20), mat(0xe9eef0, 0.3)); b.position.y = 0.045; b.castShadow = true; g.add(b);
+    const c = new THREE.Mesh(new THREE.SphereGeometry(0.0235, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xe8c5cf, 0.4)); c.position.y = 0.09; c.castShadow = true; g.add(c);
+    B(g, mat(0x2a63c8, 0.5), 0.02, 0.026, 0.001, 0, 0.05, -0.0228, { cast: false });
+    return { g, ports: {} };
+  }
+  function buildTin() {
+    const g = new THREE.Group();
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 24), mat(0x1c5a3a, 0.4, 0.3)); t.position.y = 0.01; t.castShadow = true; g.add(t);
+    const l = new THREE.Mesh(new THREE.CircleGeometry(0.026, 24).rotateX(-Math.PI / 2), mat(0xd94a3c, 0.5)); l.position.y = 0.0205; g.add(l);
+    return { g, ports: {} };
+  }
+  function buildJar() {
+    const g = new THREE.Group();
+    const j = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.033, 0.085, 22), new THREE.MeshStandardMaterial({ color: 0xdfe6ea, roughness: 0.05, transparent: true, opacity: 0.35 })); j.position.y = 0.0425; g.add(j);
+    const f = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 20), mat(0xc9ad7c, 0.9)); f.position.y = 0.028; g.add(f);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.031, 0.031, 0.008, 20), mat(0x2f7d4b, 0.5)); lid.position.y = 0.089; g.add(lid);
+    return { g, ports: {} };
+  }
+  function buildScissors() {
+    const g = new THREE.Group(), pink = mat(0xe9b9cc, 0.45), blade = mat(0xb9bcc0, 0.25, 0.9);
+    for (const s of [-1, 1]) {
+      B(g, blade, 0.006, 0.002, 0.10, s * 0.004, 0.003, -0.055, { ry: s * 0.06 });
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.004, 8, 20).rotateX(Math.PI / 2), pink); ring.position.set(s * 0.02, 0.005, 0.045); ring.castShadow = true; g.add(ring);
+      B(g, pink, 0.008, 0.008, 0.045, s * 0.008, 0.005, 0.005, { ry: s * -0.1 });
+    }
+    return { g, ports: {} };
+  }
+
+  // ---------- Wooting 60HE (คีย์แคปขาว/ดำ + ไฟใต้คีย์สีฟ้า) ----------
+  function buildKeyboard() {
+    const g = new THREE.Group(), ports = {};
+    const tilt = new THREE.Group(); tilt.position.set(0, 0.003, 0.0515); tilt.rotation.x = deg(6); g.add(tilt);
+    const CW = 0.294, CD = 0.103, CT = 0.022;
+    const cs = slab(CW, CT, CD, 0.006, mat(0x0f1012, 0.4, 0.5), 0.0018); cs.position.set(0, 0, -CD / 2); tilt.add(cs);
+    const U = 0.01905, x0 = -7.5 * U;
+    const D = 'd', Lt = 'l', R = 'r';   // d = คีย์แคปดำ · l = ขาว · r = แดง (ตามรูปจริง: แถวเลข/WASD/ZXCVBNM ขาว ที่เหลือดำ ตัวอักษรฟ้า)
+    const rows = [
+      [['Esc', 1, R], ['1', 1, Lt], ['2', 1, Lt], ['3', 1, Lt], ['4', 1, Lt], ['5', 1, Lt], ['6', 1, Lt], ['7', 1, Lt], ['8', 1, Lt], ['9', 1, Lt], ['0', 1, Lt], ['-', 1, Lt], ['=', 1, Lt], ['⌫', 2, Lt]],
+      [['Tab', 1.5, Lt], ['Q', 1, Lt], ['W', 1, Lt], ['E', 1, D], ['R', 1, D], ['T', 1, D], ['Y', 1, D], ['U', 1, D], ['I', 1, D], ['O', 1, D], ['P', 1, D], ['[', 1, D], [']', 1, D], ['\\', 1.5, D]],
+      [['Caps', 1.75, Lt], ['A', 1, Lt], ['S', 1, Lt], ['D', 1, Lt], ['F', 1, D], ['G', 1, D], ['H', 1, D], ['J', 1, D], ['K', 1, D], ['L', 1, D], [';', 1, D], ["'", 1, D], ['Enter', 2.25, D]],
+      [['', 2.25, D], ['Z', 1, Lt], ['X', 1, Lt], ['C', 1, Lt], ['V', 1, Lt], ['B', 1, Lt], ['N', 1, Lt], ['M', 1, Lt], [',', 1, D], ['.', 1, D], ['/', 1, D], ['Shift', 2.75, D]],
+      [['Ctrl', 1.25, Lt], ['✦', 1.25, Lt], ['Alt', 1.25, Lt], ['', 6.25, D], ['Alt', 1.25, D], ['Fn', 1.25, D], ['Win', 1.25, D], ['Ctrl', 1.25, D]],
+    ];
+    const rowZ = (r) => -CD / 2 - 0.0476 + 0.00953 + r * U;
+    const capH = 0.0088, dark = [], light = [], red = [];
+    const legend = document.createElement('canvas'); legend.width = 1536; legend.height = 512;
+    const lc = legend.getContext('2d'); lc.textAlign = 'center'; lc.textBaseline = 'middle';
+    const PXM = 1536 / (15 * U);
+    rows.forEach((row, r) => {
+      let cx = x0;
+      row.forEach(([label, u, kind]) => {
+        const kx = cx + (u * U) / 2, kz = rowZ(r);
+        (kind === D ? dark : kind === R ? red : light).push({ w: u * U - 0.0018, h: capH, d: U - 0.0018, x: kx, y: CT + capH / 2 - 0.0005, z: kz });
+        if (label) {
+          lc.fillStyle = kind === D ? '#4d8dff' : kind === R ? '#fff' : '#3a3c42';
+          lc.font = `600 ${label.length > 2 ? 34 : 46}px system-ui, sans-serif`;
+          lc.fillText(label, (kx - x0) * PXM, 512 * (0.5 + (kz - rowZ(2)) / (5 * U)) - 6);
+        }
+        cx += u * U;
+      });
+    });
+    mergeBoxes(tilt, mat(0x1c1d21, 0.5), dark);
+    mergeBoxes(tilt, mat(0xeceae4, 0.55), light);
+    mergeBoxes(tilt, mat(0xc4262e, 0.5), red);
+    const legTex = new THREE.CanvasTexture(legend); legTex.colorSpace = THREE.SRGBColorSpace; legTex.anisotropy = 8;
+    const leg = new THREE.Mesh(new THREE.PlaneGeometry(15 * U, 5 * U).rotateX(-Math.PI / 2),
+      new THREE.MeshStandardMaterial({ map: legTex, transparent: true, roughness: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+    leg.position.set(x0 + 7.5 * U, CT + capH + 0.0002, rowZ(2)); tilt.add(leg);
+    // ลายดาบคาตานะสีแดงบนสเปซบาร์ (วาดลงตัวอักษรชั้นบน)
+    { const ctx = lc, sx = (x0 + 3 * U + 0.5 * U + 3.125 * U - x0) * PXM, sy = 512 * (0.5 + (rowZ(4) - rowZ(2)) / (5 * U)) - 6;
+      ctx.fillStyle = '#c4262e'; ctx.beginPath(); ctx.moveTo(sx - 60, sy + 28); ctx.lineTo(sx + 250, sy - 4); ctx.lineTo(sx + 210, sy + 34); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#c9ccd2'; ctx.fillRect(sx - 250, sy - 12, 260, 14); }
+    B(tilt, mat(0x0f1012, 0.5), 0.010, 0.012, 0.028, -CW / 2 - 0.004, 0.011, -0.05, { cast: false });   // หูสายรัดข้างซ้าย
+    // ไฟใต้คีย์สีฟ้ารอบตัวเครื่อง
+    B(tilt, M.led, CW - 0.006, 0.0012, 0.0014, 0, CT - 0.004, 0.0004, { cast: false });
+    for (const s of [-1, 1]) B(tilt, M.led, 0.0014, 0.0012, CD - 0.004, s * (CW / 2 - 0.002), CT - 0.004, -CD / 2, { cast: false });
+    const p = new V(-0.122, CT * 0.5, -CD), n = new V(0, 0, -1);
+    portWell(tilt, 'usbc', p, n, PX); mkPort(ports, 'usbc', tilt, p, n, PX, 'Wooting 60HE · USB-C (มุมซ้ายหลัง)');
+    return { g, ports };
+  }
+
+  // ---------- Razer Viper V3 Pro (สีขาว) ----------
+  function buildMouse() {
+    const g = new THREE.Group(), ports = {};
+    const geo = new THREE.SphereGeometry(1, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2);
+    const pos = geo.attributes.position;
+    const LEN = 0.1271 / 2, WID = 0.0634 / 2, HGT = 0.0399;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), t = (z + 1) / 2;
+      const wf = 0.74 + 0.26 * Math.sin(Math.min(1, t * 1.15) * Math.PI / 2), hf = 0.62 + 0.38 * Math.sin(Math.min(1, t * 1.3) * Math.PI / 2);
+      pos.setXYZ(i, x * WID * wf, Math.max(0, y) * HGT * hf, z * LEN);
+    }
+    geo.computeVertexNormals();
+    const body = new THREE.Mesh(geo, mat(0xf0f0ed, 0.42, 0.05)); body.castShadow = body.receiveShadow = true; g.add(body);
+    const yAt = (z) => { const zn = z / LEN, t = (zn + 1) / 2; return Math.sqrt(Math.max(0, 1 - zn * zn)) * HGT * (0.62 + 0.38 * Math.sin(Math.min(1, t * 1.3) * Math.PI / 2)); };
+    const pts = []; for (let z = -0.058; z <= -0.004; z += 0.006) pts.push(new V(0, yAt(z) + 0.0002, z));
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.0006, 5), mat(0x9a9ca0, 0.8)));
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.0046, 0.0046, 0.0042, 20).rotateZ(Math.PI / 2), mat(0x2c2d31, 0.7));
+    wheel.position.set(0, yAt(-0.032) + 0.0006, -0.032); g.add(wheel);
+    for (const dz of [-0.012, 0.004]) B(g, mat(0xdcdcd8, 0.5), 0.0024, 0.0075, 0.0135, -0.0262, 0.0165, -0.021 + dz, { rz: -0.14 });
+    B(g, mat(0x1c1d20, 0.4, 0.3), 0.010, 0.0006, 0.010, 0, yAt(0.02) + 0.0002, 0.02, { cast: false });
+    return { g, ports };
+  }
+
+  // ---------- ดองเกิล Razer (กล่องดำ ไฟเขียว) + สาย USB-C สีขาว ----------
+  function buildDongle() {
+    const g = new THREE.Group(), ports = {};
+    const body = slab(0.046, 0.016, 0.046, 0.012, mat(0x101113, 0.4, 0.2), 0.003); g.add(body);
+    B(g, M.led, 0.005, 0.0012, 0.005, 0.0, 0.0165, 0.0, { cast: false });
+    B(g, mat(0x2a2c30, 0.4), 0.02, 0.0006, 0.012, 0, 0.0163, -0.012, { cast: false });
+    const p = new V(0.023, 0.008, 0), n = new V(1, 0, 0);
+    portWell(g, 'usbc', p, n, new V(0, 0, 1)); mkPort(ports, 'ext', g, p, n, new V(0, 0, 1), 'ดองเกิลเมาส์ · USB-C');
+    return { g, ports };
+  }
+
+  // ---------- ฮับ UGREEN สีเทาอลูมิเนียม (วางซ้ายมือ Mac) ----------
+  function buildDock() {
+    const g = new THREE.Group(), ports = {};
+    g.add(slab(0.125, 0.014, 0.046, 0.006, mat(0x9ba0a8, 0.5, 0.35), 0.0015));
+    B(g, M.white, 0.03, 0.0006, 0.02, -0.02, 0.0143, 0, { cast: false });   // ป้ายขาว
+    const pin = new V(-0.0625, 0.007, 0);
+    portWell(g, 'usbc', pin, new V(-1, 0, 0), new V(0, 0, 1)); mkPort(ports, 'in', g, pin, new V(-1, 0, 0), new V(0, 0, 1), 'ฮับ · USB-C จาก MacBook');
+    const pu = new V(0.0625, 0.007, 0.012), ph = new V(0.0625, 0.007, -0.012), px = new V(1, 0, 0);
+    portWell(g, 'usbc', pu, px, new V(0, 0, 1)); mkPort(ports, 'usbc', g, pu, px, new V(0, 0, 1), 'ฮับ · USB-C → จอ ASUS');
+    portWell(g, 'hdmi', ph, px, new V(0, 0, 1)); mkPort(ports, 'hdmi', g, ph, px, new V(0, 0, 1), 'ฮับ · HDMI → Xiaomi');
+    return { g, ports };
+  }
+
+  // ---------- ลำโพงทรงกลมดำ (ต่อแจ็ค 3.5 มม. จาก Mac) ----------
+  function buildSpeaker() {
+    const g = new THREE.Group(), ports = {};
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.052, 0.05, 32), mat(0x121316, 0.6)); b.position.y = 0.025; b.castShadow = true; g.add(b);
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.044, 0.004, 32), mat(0x232428, 0.5, 0.2)); t.position.y = 0.052; g.add(t);
+    const p = new V(0, 0.012, -0.051), n = new V(0, 0, -1);
+    portWell(g, 'audio', p, n, new V(1, 0, 0)); mkPort(ports, 'in', g, p, n, new V(1, 0, 0), 'ลำโพง · AUX in');
+    return { g, ports };
+  }
+
+  // ---------- แผ่นรองเมาส์ Artisan Ninja FX XL (49×42 ซม.) ----------
+  function buildPad() {
+    const g = new THREE.Group(), ports = {};
+    const tex = (() => {
+      const c = document.createElement('canvas'); c.width = 1024; c.height = 878; const x = c.getContext('2d');
+      x.fillStyle = '#0c0c0e'; x.fillRect(0, 0, 1024, 878);
+      for (let i = 0; i < 6000; i++) { x.fillStyle = `rgba(255,255,255,${Math.random() * 0.035})`; x.fillRect(Math.random() * 1024, Math.random() * 878, 1, 1); }
+      x.strokeStyle = 'rgba(170,175,185,0.55)'; x.lineWidth = 3; x.setLineDash([14, 9]);
+      x.beginPath(); x.roundRect(22, 22, 980, 834, 22); x.stroke();
+      x.setLineDash([]); x.fillStyle = 'rgba(200,204,212,0.55)'; x.font = '600 34px system-ui, sans-serif'; x.textAlign = 'right';
+      x.fillText('ARTISAN  NINJA FX', 980, 830);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+    })();
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(0.49, 0.42).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
+    top.position.y = 0.0041; top.receiveShadow = true;
+    const edge = slab(0.49, 0.004, 0.42, 0.014, mat(0x0a0a0b, 0.95), 0.0008); edge.castShadow = false;
+    g.add(edge, top);
+    return { g, ports };
+  }
+
+  // ---------- ของตกแต่ง (แก้วกับรูบิก) ----------
+  function buildMug() {
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.038, 0.095, 24, 1, true), mat(0xa39aa0, 0.6)); m.position.y = 0.0475; m.material.side = THREE.DoubleSide; m.castShadow = true; g.add(m);
+    const bot = new THREE.Mesh(new THREE.CircleGeometry(0.038, 24).rotateX(-Math.PI / 2), mat(0x8a8288, 0.6)); bot.position.y = 0.004; g.add(bot);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 8, 16, Math.PI), mat(0xa39aa0, 0.6)); ring.position.set(0.045, 0.05, 0); ring.rotation.z = -Math.PI / 2; g.add(ring);
+    return { g, ports: {} };
+  }
+  function buildCube() {
+    const g = new THREE.Group();
+    const cols = [0x2fa84f, 0xff6a13, 0xff6a13, 0x2fa84f, 0xff6a13, 0xf1faee];
+    const c = new THREE.Mesh(new THREE.BoxGeometry(0.056, 0.056, 0.056), cols.map((cl) => mat(cl, 0.35)));
+    c.position.y = 0.028; c.rotation.y = 0.5; c.castShadow = true; g.add(c);
+    return { g, ports: {} };
+  }
+
+  // ---------- ปลั๊กราง (วางในรางตะแกรง เต้าเสียบหันขึ้น) + อะแดปเตอร์ ----------
+  const SOCK_Z = (i) => -0.12 + 0.06 * i;
+  function buildStrip() {
+    const g = new THREE.Group(), ports = {};
+    B(g, M.strip, 0.056, 0.030, 0.42, 0, 0.015, 0);
+    for (let i = 0; i < 5; i++) {
+      const z = SOCK_Z(i);
+      B(g, M.well, 0.030, 0.002, 0.030, 0, 0.0305, z, { cast: false });
+      for (const s of [-1, 1]) B(g, M.steel, 0.006, 0.0015, 0.0055, s * 0.0095, 0.0316, z, { cast: false });
+      B(g, M.led, 0.003, 0.0012, 0.003, 0.02, 0.0306, z - 0.02, { cast: false });
+      mkPort(ports, 'sock' + i, g, new V(0, 0.0305, z), new V(0, 1, 0), PX, 'ช่องปลั๊ก ' + (i + 1));
+    }
+    B(g, mat(0xd94a3c, 0.5), 0.014, 0.0015, 0.02, 0, 0.0306, 0.185, { cast: false });   // สวิตช์
+    mkPort(ports, 'cord', g, new V(0, 0.015, 0.21), new V(0, 0, 1), PX, 'สายปลั๊กราง');
+    // อะแดปเตอร์ (เสียบช่อง 2, 3, 4): ช่อง 2 = Mac, ช่อง 3 = Xiaomi, ช่อง 4 = ROG
+    const brick = (i, size, color, name, label, out) => {
+      const z = SOCK_Z(i), y0 = 0.0305 + 0.006;
+      B(g, mat(color, 0.5), size[0], size[1], size[2], 0, y0 + size[1] / 2, z);
+      mkPort(ports, name, g, new V(0, y0 + size[1], z), new V(0, 1, 0), PX, label);
+      if (out) B(g, M.steel, 0.009, 0.0035, 0.007, 0, y0 + size[1] + 0.0016, z, { cast: false });
+    };
+    brick(2, [0.075, 0.030, 0.038], 0x141517, 'xiOut', 'อะแดปเตอร์ Xiaomi', false);
+    brick(3, [0.090, 0.032, 0.050], 0x141517, 'rogOut', 'อะแดปเตอร์ ROG', false);
+    return { g, ports };
+  }
+  function buildWallSocket() {
+    const g = new THREE.Group(), ports = {};
+    B(g, mat(0xf0efe9, 0.5), 0.004, 0.086, 0.086, -0.002, 0, 0);
+    B(g, M.well, 0.002, 0.030, 0.040, -0.0045, 0, 0, { cast: false });
+    mkPort(ports, 'in', g, new V(-0.004, 0, 0), new V(-1, 0, 0), new V(0, 0, 1), 'ปลั๊กผนัง');
+    return { g, ports };
+  }
+  function buildTray() {   // รางตะแกรงลวดสีดำ ยาวตามแนวผนัง ห้อยจากใต้โต๊ะ
+    const g = new THREE.Group();
+    const len = 0.83, width = 0.12, y0 = 0.0, y1 = 0.058, r = 0.0018, parts = [];
+    for (const s of [-1, 1]) {
+      parts.push({ w: r * 2, h: r * 2, d: len, x: s * width / 2, y: y0, z: 0 });
+      parts.push({ w: r * 2, h: r * 2, d: len, x: s * width / 2, y: y1, z: 0 });
+    }
+    for (let z = -len / 2; z <= len / 2 + 1e-6; z += 0.045) {
+      parts.push({ w: width, h: r * 2, d: r * 2, x: 0, y: y0, z });
+      for (const s of [-1, 1]) parts.push({ w: r * 2, h: y1 - y0, d: r * 2, x: s * width / 2, y: (y0 + y1) / 2, z });
+    }
+    mergeBoxes(g, M.tray, parts, { cast: false });
+    for (const z of [-0.36, -0.06, 0.24, 0.40]) for (const s of [-1, 1]) B(g, M.tray, 0.004, 0.06, 0.004, s * width / 2, y1 + 0.03, z, { cast: false });   // ก้านแขวนใต้โต๊ะ
+    return { g, ports: {} };
+  }
+  function buildGrommet() {
+    const g = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0255, 0.0032, 8, 32).rotateX(Math.PI / 2), M.grommet); ring.position.y = 0.0025; ring.castShadow = ring.receiveShadow = true; g.add(ring);
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(0.0235, 24).rotateX(-Math.PI / 2), M.well); hole.position.y = 0.0006; g.add(hole);
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.0235, 0.0235, 0.03, 20, 1, true), M.grommet); pipe.material.side = THREE.DoubleSide; pipe.position.y = -0.015; g.add(pipe);
+    return { g, ports: {} };
+  }
+
+  // =====================================================================
+  // รายการชิ้นส่วน (items) — ลากได้ · หมุนได้
+  // =====================================================================
+  const items = {};
+  const DESK = { x0: 2.86, x1: 3.98, z0: 3.42, z1: 4.98 };
+  const TRAYB = { x0: 3.78, x1: 3.84, z0: 4.30, z1: 4.66 };
+  function addItem(id, name, built, home, opts = {}) {
+    const { g, ports } = built;
+    g.userData.itemId = id;
+    g.position.set(home.x, home.y ?? Y, home.z); g.rotation.y = home.ry ?? 0;
+    gearG.add(g);
+    items[id] = { id, name, group: g, ports, home: { x: home.x, y: home.y ?? Y, z: home.z, ry: home.ry ?? 0 }, fixed: !!opts.fixed, bounds: opts.bounds ?? DESK, step: opts.step ?? 15 };
+    g.updateMatrixWorld(true);
+    return items[id];
+  }
+  addItem('asus', 'จอ ASUS ROG PG32UCDM (แขนจอ)', buildAsus(), { x: 3.87, z: 4.28, ry: FRONT_X });
+  addItem('xiaomi', 'จอ Xiaomi G27 (แนวตั้ง)', buildXiaomi(), { x: 3.90, z: 4.80, ry: FRONT_X });
+  addItem('mac', 'MacBook Air M5', buildMac(), { x: 3.72, z: 4.28, ry: FRONT_X });
+  addItem('rog', 'ROG Strix 15 + ขาตั้ง', buildRog(), { x: 3.60, z: 3.75, ry: FRONT_X });
+  addItem('kb', 'คีย์บอร์ด Wooting 60HE', buildKeyboard(), { x: 3.52, z: 4.28, ry: FRONT_X });
+  addItem('pad', 'แผ่นรองเมาส์ Artisan Ninja FX XL', buildPad(), { x: 3.62, z: 4.74, ry: FRONT_X });
+  addItem('mouse', 'เมาส์ Razer Viper V3 Pro', buildMouse(), { x: 3.56, y: Y + 0.0041, z: 4.72, ry: FRONT_X });
+  addItem('dongle', 'ดองเกิลเมาส์', buildDongle(), { x: 3.95, y: Y, z: 4.66, ry: 0 });
+  addItem('dock', 'ฮับ UGREEN (ข้าง Mac)', buildDock(), { x: 3.66, y: Y, z: 4.03, ry: 0 });
+  addItem('speaker', 'ลำโพงกลม', buildSpeaker(), { x: 3.88, y: Y, z: 4.55, ry: 0 });
+  addItem('hub', 'ฮับ USB-C UGREEN', buildHub(), { x: 3.80, y: Y + 0.0, z: 3.60, ry: 0 });
+  addItem('roll', 'โรลออน', buildRoll(), { x: 3.44, z: 3.74, ry: 0 });
+  addItem('tin', 'ตลับยาหม่อง', buildTin(), { x: 3.46, z: 3.86, ry: 0 });
+  addItem('jar', 'ขวดไม้จิ้มฟัน', buildJar(), { x: 3.45, z: 3.95, ry: 0 });
+  addItem('scissors', 'กรรไกร', buildScissors(), { x: 3.44, z: 3.62, ry: 1.2 });
+  addItem('cube', 'รูบิก', buildCube(), { x: 3.45, z: 3.50, ry: 0 });
+  addItem('strip', 'ปลั๊กราง + อะแดปเตอร์', buildStrip(), { x: 3.81, y: 0.6, z: 4.35, ry: 0 }, { bounds: { x0: 3.5, x1: 3.9, z0: 4.1, z1: 4.75 }, step: 90 });
+  addItem('tray', 'รางตะแกรง', buildTray(), { x: 3.81, y: 0.595, z: 4.47, ry: 0 }, { fixed: true });
+  addItem('wall', 'ปลั๊กผนัง', buildWallSocket(), { x: W, y: 0.30, z: 4.60, ry: 0 }, { fixed: true });
+
+  // =====================================================================
+  // ปลั๊ก/หัวสาย + สาย
+  // =====================================================================
+  const PLUG = {
+    usbc: { s: [0.0088, 0.0028], b: [0.0125, 0.0068, 0.021], c: 0x111214 },
+    usba: { s: [0.0125, 0.0046], b: [0.0165, 0.0095, 0.030], c: 0x111214 },
+    dp: { s: [0.0165, 0.0058], b: [0.022, 0.0125, 0.032], c: 0x111214 },
+    hdmi: { s: [0.0145, 0.0048], b: [0.021, 0.0115, 0.030], c: 0x111214 },
+    c13: { s: [0.024, 0.0150], b: [0.034, 0.022, 0.030], c: 0x111214 },
+    magsafe: { s: [0.0122, 0.0034], b: [0.0150, 0.0100, 0.024], c: 0xcfd2d6 },
+    thai: { s: [0.019, 0.0035], b: [0.036, 0.030, 0.034], c: 0x1a1b1e },
+    audio: { s: [0.0035, 0.0035], b: [0.0075, 0.0075, 0.022], c: 0x0d0d0f },
+    dc: { round: true },
+  };
+  const plugLen = (kind) => (kind === 'none' ? 0.004 : PLUG[kind].round ? 0.030 : 0.004 + PLUG[kind].b[2]);
+  function mountPlug(itemId, portName, kind) {
+    if (kind === 'none') return;
+    const pt = items[itemId].ports[portName];
+    const d = PLUG[kind], g = new THREE.Group();
+    g.position.copy(pt.p); orient(g, pt.n, pt.w);
+    if (d.round) {
+      const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.0028, 0.0028, 0.012, 12).rotateX(Math.PI / 2), M.steel); sh.position.z = 0.002; g.add(sh);
+      const bd = new THREE.Mesh(new THREE.CylinderGeometry(0.0048, 0.0048, 0.022, 14).rotateX(Math.PI / 2), M.rubber); bd.position.z = 0.019; g.add(bd);
+    } else {
+      B(g, M.steel, d.s[0], d.s[1], 0.008, 0, 0, 0.0005, { cast: false });
+      B(g, mat(d.c, 0.5, kind === 'magsafe' ? 0.6 : 0), d.b[0], d.b[1], d.b[2], 0, 0, 0.004 + d.b[2] / 2);
+    }
+    pt.obj.add(g);
+  }
+  function endpoint(spec) {
+    const [iid, pname, kind] = spec, it = items[iid], pt = it.ports[pname], o = pt.obj;
+    o.updateWorldMatrix(true, false);
+    const p = o.localToWorld(pt.p.clone());
+    const n = o.localToWorld(pt.p.clone().add(pt.n)).sub(p).normalize();
+    return { e: p.clone().addScaledVector(n, plugLen(kind)), n, p };
+  }
+
+  const cableList = [];
+  const V3 = (a) => (a instanceof V ? a.clone() : new V(a[0], a[1], a[2]));
+  function cablePoints(c) {
+    const A = endpoint(c.a), Bp = endpoint(c.b);
+    const raw = [A.e, A.e.clone().addScaledVector(A.n, c.lead[0]), ...c.via, Bp.e.clone().addScaledVector(Bp.n, c.lead[1]), Bp.e];
+    const out = [];
+    for (const p of raw) if (!out.length || out[out.length - 1].distanceTo(p) > 0.003) out.push(p);
+    return out;
+  }
+  function rebuildCable(c) {
+    const pts = cablePoints(c);
+    if (pts.length < 2) return;
+    const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+    c.curve = curve;
+    const segs = Math.min(700, Math.max(24, Math.round(curve.getLength() * 220)));
+    const geo = new THREE.TubeGeometry(curve, segs, c.r, 7, false);
+    const proxyGeo = new THREE.TubeGeometry(curve, Math.min(300, Math.round(segs / 2)), Math.max(0.007, c.r * 2), 5, false);
+    if (!c.mesh) {
+      c.mesh = new THREE.Mesh(geo, c.mat); c.mesh.castShadow = false; c.mesh.receiveShadow = true; c.mesh.userData.cableId = c.id; cablesG.add(c.mesh);
+      c.proxy = new THREE.Mesh(proxyGeo, M.proxy); c.proxy.userData.cableId = c.id; cablesG.add(c.proxy);
+    } else { c.mesh.geometry.dispose(); c.mesh.geometry = geo; c.proxy.geometry.dispose(); c.proxy.geometry = proxyGeo; }
+    // ตีนตุ๊กแก: ตามตำแหน่งสัดส่วนความยาวสาย
+    c.ties.forEach((t, i) => {
+      let ring = c.tieMeshes[i];
+      if (!ring) {
+        ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.3, 6, 18), M.velcro); ring.castShadow = true;
+        cablesG.add(ring); c.tieMeshes[i] = ring;
+      }
+      const tt = Math.min(0.98, Math.max(0.02, t));
+      ring.position.copy(curve.getPointAt(tt));
+      ring.quaternion.setFromUnitVectors(new V(0, 0, 1), curve.getTangentAt(tt));
+      ring.scale.setScalar(c.r + 0.0022);
+    });
+  }
+  function defCable(id, name, a, b, r, material, via, { lead = [0.02, 0.02], ties = [] } = {}) {
+    mountPlug(a[0], a[1], a[2]); mountPlug(b[0], b[1], b[2]);
+    const c = { id, name, a, b, r, mat: material, via: via.map(V3), home: via.map(V3), lead, ties, tieMeshes: [], mesh: null, proxy: null, curve: null };
+    cableList.push(c); rebuildCable(c);
+    return c;
+  }
+  const refreshCables = () => { cableList.forEach(rebuildCable); updateTags(); if (selCable) updateHandles(); };
+
+  // ---------- เส้นทางสายตั้งต้น (พิกัดโลก) ----------
+  // สายทุกเส้นเก็บไว้ด้านหลัง: ข้ามขอบหลังโต๊ะลงช่องว่างระหว่างโต๊ะกับผนัง (x≈3.99) → วิ่งใต้/หลังโต๊ะไปที่รางตะแกรง
+  // เส้นที่ต้องวิ่งบนโต๊ะ (Mac/คีย์บอร์ด) รวมเป็นมัดเดียวชิดด้านซ้ายของ Mac แล้วลงหลังโต๊ะที่ z ≈ 4.05
+  const Yd = 0.7535;
+  // ลงหลังโต๊ะที่ z แล้ววิ่งใต้โต๊ะ (ข้ามแผงหลังโต๊ะทางด้านบน y .712) เข้าไปที่ราง
+  const behind = (z, from = 0.85) => [[3.972, from, z], [3.991, 0.775, z], [3.993, 0.735, z], [3.99, 0.712, z]];
+  const overPanel = (z) => [[3.95, 0.712, z], [3.90, 0.70, z - 0.02]];
+  defCable('strip-cord', 'สายปลั๊กราง → ปลั๊กผนัง', ['strip', 'cord', 'none'], ['wall', 'in', 'thai'], 0.0055, M.cWhite,
+    [[3.84, 0.62, 4.68], [3.90, 0.66, 4.70], [3.947, 0.708, 4.69], [3.985, 0.62, 4.68], [3.99, 0.45, 4.64]], { ties: [0.25] });
+  defCable('asus-ac', 'สายไฟ ASUS (C13) → ปลั๊กราง', ['asus', 'ac', 'c13'], ['strip', 'sock0', 'thai'], 0.0048, M.cBlack,
+    [[3.955, 0.86, 4.52], ...behind(4.52, 0.80), ...overPanel(4.52), [3.86, 0.69, 4.42], [3.82, 0.70, 4.30]], { lead: [0.03, 0.02], ties: [0.5] });
+  defCable('hub-asus', 'USB-C: ฮับ → ASUS USB-C (ภาพ+USB)', ['dock', 'usbc', 'usbc'], ['asus', 'usbc', 'usbc'], 0.0027, M.cSilver,
+    [[3.85, Yd, 4.047], [3.905, Yd, 4.055], [3.925, 0.80, 4.07]], { lead: [0.02, 0.03], ties: [0.4] });
+  defCable('dock-mac', 'USB-C: MacBook → ฮับ UGREEN', ['mac', 'tbA', 'usbc'], ['dock', 'in', 'usbc'], 0.0030, M.cBlack,
+    [[3.70, Yd, 4.092], [3.60, Yd, 4.09], [3.555, Yd, 4.062]], { lead: [0.02, 0.02] });
+  defCable('dock-hdmi', 'HDMI: ด็อก → Xiaomi', ['dock', 'hdmi', 'hdmi'], ['xiaomi', 'hdmi1', 'hdmi'], 0.0034, M.cBlack,
+    [[3.80, Yd, 4.01], [3.90, Yd, 4.01], [3.975, 0.7535, 4.01], [3.993, 0.735, 4.01], [3.99, 0.70, 4.01], [3.99, 0.70, 4.40], [3.99, 0.70, 4.70], [3.993, 0.735, 4.72], [3.99, 0.80, 4.72], [3.972, 0.93, 4.72]],
+    { lead: [0.02, 0.03], ties: [0.12, 0.45] });
+  defCable('mac-aux', 'สาย AUX 3.5 มม.: MacBook → ลำโพง', ['mac', 'phones', 'audio'], ['speaker', 'in', 'audio'], 0.0025, M.cBlack,
+    [[3.80, Yd, 4.48]], { lead: [0.02, 0.02] });
+  defCable('kb', 'สายถัก USB-C: คีย์บอร์ด → ASUS USB-A', ['kb', 'usbc', 'usbc'], ['asus', 'usba1', 'usba'], 0.0026, M.cBraid,
+    [[3.60, Yd + 0.004, 4.13], [3.585, Yd, 4.10], [3.60, Yd, 4.078], [3.90, Yd, 4.078], [3.975, 0.7535, 4.078], [3.993, 0.735, 4.078], [3.99, 0.70, 4.078], [3.99, 0.70, 4.25], [3.993, 0.735, 4.445], [3.99, 0.80, 4.445], [3.972, 0.90, 4.445]],
+    { lead: [0.03, 0.03], ties: [0.15] });
+  defCable('dongle', 'สาย USB-C ขาว: ดองเกิล → ASUS USB-A', ['dongle', 'ext', 'usbc'], ['asus', 'usba2', 'usba'], 0.0028, M.cWhite,
+    [[3.99, 0.735, 4.66], [3.99, 0.70, 4.60], [3.99, 0.70, 4.45], [3.993, 0.735, 4.41], [3.99, 0.80, 4.41], [3.972, 0.90, 4.41]], { lead: [0.02, 0.03] });
+  defCable('rog', 'สายไฟ ROG → ปลั๊กราง', ['rog', 'dc', 'dc'], ['strip', 'rogOut', 'none'], 0.0045, M.cBlack,
+    [[3.80, 0.85, 3.87], [3.93, 0.80, 3.87], [3.99, 0.775, 3.87], [3.993, 0.735, 3.87], [3.99, 0.70, 3.90], [3.92, 0.69, 4.00], [3.86, 0.685, 4.15], [3.83, 0.70, 4.30]], { lead: [0.03, 0.02], ties: [0.5] });
+  defCable('hub', 'สาย USB-C ฮับ → ROG', ['hub', 'out', 'usbc'], ['rog', 'usbc', 'usbc'], 0.0028, M.cBlack,
+    [[3.70, Yd + 0.004, 3.60], [3.72, 0.85, 3.62]], { lead: [0.02, 0.03] });
+  defCable('xiaomi-dc', 'สายไฟ Xiaomi → ปลั๊กราง', ['xiaomi', 'dc', 'dc'], ['strip', 'xiOut', 'none'], 0.0025, M.cBlack,
+    [[3.972, 0.95, 4.72], ...behind(4.72, 0.86), ...overPanel(4.72), [3.85, 0.69, 4.55], [3.83, 0.70, 4.40]], { lead: [0.03, 0.02] });
+
+  // =====================================================================
+  // ป้ายพอร์ต
+  // =====================================================================
+  const tagObjs = [];
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthTest: false });
+  function buildTags() {
+    tagsG.clear(); tagObjs.length = 0;
+    for (const it of Object.values(items)) {
+      const names = Object.keys(it.ports).filter((k) => !/^(sock|cord)/.test(k));
+      names.forEach((name, i) => {
+        const pt = it.ports[name];
+        const el = document.createElement('div'); el.className = 'plab' + (/ว่าง|upstream/.test(pt.label) ? ' idle' : ''); el.textContent = pt.label;
+        const o = new CSS2DObject(el); o.userData = { item: it.id, port: name, idx: i, cnt: names.length }; tagsG.add(o);
+        const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new V(), new V(0, 0.01, 0)]), lineMat); ln.renderOrder = 5; ln.frustumCulled = false;
+        o.userData.line = ln; tagsG.add(ln); tagObjs.push(o);
+      });
+    }
+    updateTags();
+  }
+  function updateTags() {
+    for (const o of tagObjs) {
+      const { item, port, idx, cnt, line } = o.userData, it = items[item], pt = it.ports[port];
+      pt.obj.updateWorldMatrix(true, false);
+      const p = pt.obj.localToWorld(pt.p.clone());
+      const n = pt.obj.localToWorld(pt.p.clone().add(pt.n)).sub(p).normalize();
+      const lp = p.clone().addScaledVector(n, 0.13).add(new V(0, (idx - (cnt - 1) / 2) * 0.038 + 0.02, 0));
+      o.position.copy(lp);
+      line.geometry.setFromPoints([p.clone().addScaledVector(n, 0.004), lp]);
+    }
+  }
+  buildTags();
+
+  // ไฟเสริมเฉพาะจุด (หลังผนังเหลืองอยู่ในเงา ไม่งั้นมืดจนไม่เห็นพอร์ต)
+  const rearLight = new THREE.PointLight(0xfff3e2, 0.7, 1.5, 2); rearLight.position.set(4.18, 1.15, 4.5);
+  const underLight = new THREE.PointLight(0xfff3e2, 0.35, 1.2, 2); underLight.position.set(3.6, 0.5, 4.3);
+  root.add(rearLight, underLight);
+  tagsG.visible = false; tagObjs.forEach((o) => { o.visible = false; o.userData.line.visible = false; });
+
+  // =====================================================================
+  // การเลือก / ลาก / ดัดสาย
+  // =====================================================================
+  let selItem = null, selCable = null, selPoint = -1, drag = null;
+  const outline = new THREE.BoxHelper(new THREE.Object3D(), 0xff8a2a); outline.visible = false; outline.material.depthTest = false; outline.renderOrder = 9; root.add(outline);
+  const ray = new THREE.Raycaster();
+  const dsbar = document.getElementById('dsbar'), dsName = document.getElementById('dsName'), dsHint = document.getElementById('dsHint');
+  const bars = { rotL: document.getElementById('dsRotL'), rotR: document.getElementById('dsRotR'), del: document.getElementById('dsDelPt'), reset: document.getElementById('dsReset'), close: document.getElementById('dsClose') };
+
+  const active = () => enabled && editing && root.visible && view === 'desk';
+  function setRayFrom(e) {
+    const r = canvas.getBoundingClientRect();
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), activeCam);
+  }
+  const itemOf = (o) => { while (o && !o.userData.itemId) o = o.parent; return o ? items[o.userData.itemId] : null; };
+  function pick(e) {
+    setRayFrom(e);
+    if (selCable) {
+      const h = ray.intersectObjects(handlesG.children, false)[0];
+      if (h) return { kind: 'handle', idx: h.object.userData.idx };
+    }
+    const hits = ray.intersectObjects([gearG, cablesG], true);
+    for (const h of hits) {
+      if (h.object.userData.cableId) { if (!cablesG.visible) continue; return { kind: 'cable', cable: cableList.find((c) => c.id === h.object.userData.cableId), point: h.point }; }
+      const it = itemOf(h.object);
+      if (it && !it.fixed) return { kind: 'item', item: it };
+      if (it) continue;   // ชิ้นที่ล็อก (ราง/ปลั๊กผนัง/รูร้อยสาย) — มองทะลุ
+    }
+    return null;
+  }
+
+  function updateBar() {
+    const has = selItem || selCable;
+    dsbar.hidden = !(has && active());
+    if (!has) return;
+    dsName.textContent = selItem ? selItem.name : selCable.name;
+    dsHint.textContent = selItem ? 'ลากเพื่อย้าย · Q/E หมุน · ดับเบิลคลิกเพื่อซูม' : 'ลากที่สายเพื่อดัด · ลากจุดส้ม · ดับเบิลคลิกจุดเพื่อลบ';
+    bars.rotL.hidden = bars.rotR.hidden = !selItem;
+    bars.del.hidden = !(selCable && selPoint >= 0);
+  }
+  function clearHandles() { handlesG.children.slice().forEach((h) => { h.geometry.dispose(); handlesG.remove(h); }); }
+  const handleGeo = new THREE.SphereGeometry(0.0085, 12, 10);
+  function updateHandles() {
+    clearHandles();
+    if (!selCable) return;
+    selCable.via.forEach((p, i) => {
+      const h = new THREE.Mesh(handleGeo.clone(), i === selPoint ? M.handleSel : M.handle);
+      h.position.copy(p); h.renderOrder = 10; h.userData.idx = i; handlesG.add(h);
+    });
+    invalidate();
+  }
+  function select(what) {
+    selItem = what?.item ?? null; selCable = what?.cable ?? null; selPoint = what?.point ?? -1;
+    if (selItem) { outline.setFromObject(selItem.group); outline.visible = true; } else outline.visible = false;
+    updateHandles(); updateBar(); invalidate();
+  }
+  function keepOutline() { if (selItem) outline.setFromObject(selItem.group); }
+
+  const snap = (v, s = 0.005) => Math.round(v / s) * s;
+  function onDown(e) {
+    if (!active() || (e.pointerType === 'mouse' && e.button !== 0) || drag) return;
+    const hit = pick(e);
+    if (!hit) { pending = { x: e.clientX, y: e.clientY }; return; }   // ปล่อยให้กล้องหมุน · ถ้าแค่คลิก = ยกเลิกเลือก
+    e.stopImmediatePropagation();
+    controls.autoRotate = false; tween = null;
+    setRayFrom(e);
+    if (hit.kind === 'item') {
+      select({ item: hit.item });
+      const it = hit.item, plane = new THREE.Plane(new V(0, 1, 0), -it.group.position.y), p = ray.ray.intersectPlane(plane, new V());
+      if (!p) return;
+      drag = { kind: 'item', it, plane, off: it.group.position.clone().sub(p), id: e.pointerId, moved: false };
+    } else {
+      const c = hit.kind === 'handle' ? selCable : hit.cable;
+      let idx;
+      if (hit.kind === 'handle') idx = hit.idx;
+      else {   // คลิกที่ตัวสาย → แทรกจุดดัดใหม่ตรงนั้นแล้วลากได้เลย
+        idx = insertPointAt(c, hit.point);
+        select({ cable: c, point: idx });
+      }
+      if (hit.kind === 'handle') { selPoint = idx; updateHandles(); updateBar(); }
+      const camDir = new V(); activeCam.getWorldDirection(camDir);
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(camDir, c.via[idx]), p = ray.ray.intersectPlane(plane, new V());
+      if (!p) return;
+      drag = { kind: 'point', c, idx, plane, off: c.via[idx].clone().sub(p), id: e.pointerId, moved: hit.kind === 'cable' };
+      if (!selCable || selCable !== c) select({ cable: c, point: idx });
+    }
+    canvas.setPointerCapture(e.pointerId); canvas.style.cursor = 'grabbing';
+  }
+  let pending = null;
+  function insertPointAt(c, pt) {
+    // หา segment ที่ใกล้จุดคลิกที่สุด (เทียบกับ path จริงของสาย) แล้วแทรกก่อน via ตัวถัดไป
+    const full = cablePoints(c);
+    const lead = 2;                                     // full = [e, lead, ...via, lead, e]
+    let best = 0, bd = 1e9;
+    for (let i = 0; i < full.length - 1; i++) {
+      const seg = new THREE.Line3(full[i], full[i + 1]), q = seg.closestPointToPoint(pt, true, new V()), d = q.distanceTo(pt);
+      if (d < bd) { bd = d; best = i; }
+    }
+    const at = Math.min(c.via.length, Math.max(0, best - (lead - 1)));
+    c.via.splice(at, 0, pt.clone());
+    rebuildCable(c);
+    return at;
+  }
+  function onMove(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    e.stopImmediatePropagation();
+    setRayFrom(e);
+    const p = ray.ray.intersectPlane(drag.plane, new V());
+    if (!p) return;
+    const s = e.shiftKey ? 0.001 : 0.005;
+    if (drag.kind === 'item') {
+      const it = drag.it, t = p.add(drag.off), b = it.bounds;
+      it.group.position.x = Math.min(b.x1, Math.max(b.x0, snap(t.x, s)));
+      it.group.position.z = Math.min(b.z1, Math.max(b.z0, snap(t.z, s)));
+      it.group.updateMatrixWorld(true);
+      drag.moved = true; keepOutline(); refreshCables();
+    } else {
+      const t = p.add(drag.off);
+      drag.c.via[drag.idx].set(snap(t.x, s), Math.max(0.005, snap(t.y, s)), snap(t.z, s));
+      drag.moved = true; rebuildCable(drag.c); updateHandles();
+    }
+    invalidate({ shadows: true });
+  }
+  function onUp(e) {
+    if (pending && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) < 6 && (selItem || selCable)) select(null);
+    pending = null;
+    if (!drag || e.pointerId !== drag.id) return;
+    const wasMoved = drag.moved;
+    // ดับเบิลคลิก
+    const now = performance.now(), key = drag.kind === 'item' ? drag.it.id : `${drag.c.id}:${drag.idx}`;
+    const dbl = lastClick && lastClick.key === key && now - lastClick.t < 380;
+    lastClick = wasMoved ? null : { key, t: now };
+    const d = drag; drag = null; canvas.style.cursor = '';
+    if (dbl && !wasMoved) {
+      if (d.kind === 'item') focusOn(d.it);
+      else { d.c.via.splice(d.idx, 1); selPoint = -1; rebuildCable(d.c); updateHandles(); updateBar(); }
+    }
+    if (wasMoved || dbl) save();
+    invalidate({ shadows: true });
+  }
+  let lastClick = null;
+  function focusOn(it) {
+    const box = new THREE.Box3().setFromObject(it.group), c = box.getCenter(new V()), size = box.getSize(new V()).length();
+    const dir = activeCam.position.clone().sub(controls.target).normalize();
+    const dist = Math.max(0.45, size * 1.15);
+    tween = { from: { pos: activeCam.position.clone(), target: controls.target.clone() }, to: { pos: c.clone().addScaledVector(dir, dist), target: c }, t0: performance.now(), dur: 650 };
+  }
+  canvas.addEventListener('pointerdown', onDown, { capture: true });
+  canvas.addEventListener('pointermove', onMove, { capture: true });
+  canvas.addEventListener('pointerup', onUp, { capture: true });
+  canvas.addEventListener('pointercancel', onUp, { capture: true });
+  addEventListener('keydown', (e) => {
+    if (!active() || e.target.closest?.('input, textarea')) return;
+    if (selItem && (e.code === 'KeyQ' || e.code === 'KeyE')) { rotateSel(e.code === 'KeyQ' ? 1 : -1, e.shiftKey ? 5 : selItem.step); e.preventDefault(); }
+    if ((e.code === 'Delete' || e.code === 'Backspace') && selCable && selPoint >= 0) { removePoint(); e.preventDefault(); }
+    if (e.code === 'Escape') select(null);
+  });
+  function rotateSel(dir, step) {
+    if (!selItem) return;
+    selItem.group.rotation.y += dir * deg(step); selItem.group.updateMatrixWorld(true);
+    keepOutline(); refreshCables(); save(); invalidate({ shadows: true });
+  }
+  function removePoint() {
+    if (!selCable || selPoint < 0) return;
+    selCable.via.splice(selPoint, 1); selPoint = -1; rebuildCable(selCable); updateHandles(); updateBar(); save();
+  }
+  bars.rotL.addEventListener('click', () => rotateSel(1, selItem?.step ?? 15));
+  bars.rotR.addEventListener('click', () => rotateSel(-1, selItem?.step ?? 15));
+  bars.del.addEventListener('click', removePoint);
+  bars.close.addEventListener('click', () => select(null));
+  bars.reset.addEventListener('click', () => {
+    if (selItem) { const h = selItem.home; selItem.group.position.set(h.x, h.y, h.z); selItem.group.rotation.y = h.ry; selItem.group.updateMatrixWorld(true); keepOutline(); refreshCables(); save(); }
+    else if (selCable) { selCable.via = selCable.home.map((p) => p.clone()); selPoint = -1; rebuildCable(selCable); updateHandles(); updateBar(); save(); }
+  });
+
+  // ---------- บันทึก / โหลด / รีเซ็ตทั้งชุด ----------
+  function save() {
+    const data = { items: {}, cables: {} };
+    for (const it of Object.values(items)) if (!it.fixed) data.items[it.id] = [it.group.position.x, it.group.position.z, it.group.rotation.y];
+    for (const c of cableList) data.cables[c.id] = c.via.map((p) => [+p.x.toFixed(4), +p.y.toFixed(4), +p.z.toFixed(4)]);
+    try { localStorage.setItem(STORE, JSON.stringify(data)); } catch { /* ข้าม */ }
+  }
+  function load() {
+    let data = null;
+    try { data = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch { /* ข้าม */ }
+    if (!data) return;
+    for (const [id, v] of Object.entries(data.items || {})) {
+      const it = items[id]; if (!it || !Array.isArray(v) || v.some((n) => !Number.isFinite(n))) continue;
+      it.group.position.x = v[0]; it.group.position.z = v[1]; it.group.rotation.y = v[2]; it.group.updateMatrixWorld(true);
+    }
+    for (const c of cableList) {
+      const v = data.cables?.[c.id];
+      if (Array.isArray(v) && v.every((p) => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite))) c.via = v.map(V3);
+    }
+  }
+  function resetAll() {
+    for (const it of Object.values(items)) { const h = it.home; it.group.position.set(h.x, h.y, h.z); it.group.rotation.y = h.ry; it.group.updateMatrixWorld(true); }
+    for (const c of cableList) c.via = c.home.map((p) => p.clone());
+    select(null); refreshCables(); save(); invalidate({ shadows: true });
+  }
+  load(); refreshCables();
+
+  // =====================================================================
+  // ห้องโต๊ะคอม (ห้องโล่ง): ซ่อนทั้งห้องจริง แล้วแสดงพื้น + ผนังเหลือง + โต๊ะใหญ่ ในพิกัดเดียวกับชุดโต๊ะ
+  //   → ทุกชิ้น/สาย/ปลั๊กราง/ปลั๊กผนังอยู่ที่เดิม แต่มีที่โล่งให้จัดวางกว้างขึ้นมาก (โต๊ะ 1.2 × 2.6 ม.)
+  // =====================================================================
+  const studioG = new THREE.Group(); studioG.visible = false; scene.add(studioG);
+  {
+    const floorM = new THREE.MeshStandardMaterial({ color: 0xd8d4cb, roughness: 0.85 });
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(14, 14).rotateX(-Math.PI / 2), floorM); fl.position.set(1.2, 0, 4.2); fl.receiveShadow = true; studioG.add(fl);
+    const wallM = new THREE.MeshStandardMaterial({ color: 0xe6b42a, roughness: 0.92 });
+    const wl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.0, 12), wallM); wl.position.set(W + 0.05, 1.5, 4.2); wl.receiveShadow = wl.castShadow = true; studioG.add(wl);
+    const topM = mat(0xf1f1ef, 0.6), legM = mat(0x2f3337, 0.5, 0.3);
+    const dx0 = 2.78, dx1 = W - 0.015, dz0 = 2.9, dz1 = 5.5;
+    B(studioG, topM, dx1 - dx0, 0.03, dz1 - dz0, (dx0 + dx1) / 2, Y - 0.015, (dz0 + dz1) / 2);
+    for (const lx of [dx0 + 0.06, dx1 - 0.06]) for (const lz of [dz0 + 0.06, (dz0 + dz1) / 2, dz1 - 0.06]) B(studioG, legM, 0.045, Y - 0.03, 0.045, lx, (Y - 0.03) / 2, lz);
+    B(studioG, legM, dx1 - dx0 - 0.12, 0.04, 0.03, (dx0 + dx1) / 2, Y - 0.05, dz0 + 0.06);
+    B(studioG, legM, dx1 - dx0 - 0.12, 0.04, 0.03, (dx0 + dx1) / 2, Y - 0.05, dz1 - 0.06);
+  }
+  let studioOn = false, savedVis = null;
+  const STUDIO_DESK = { x0: 2.83, x1: 3.98, z0: 2.97, z1: 5.44 }, MAIN_DESK = { ...DESK };
+  function enterStudio() {
+    if (studioOn) return;
+    studioOn = true; savedVis = new Map();
+    for (const o of scene.children) { if (o === root || o === studioG || o.isLight) continue; savedVis.set(o, o.visible); o.visible = false; }
+    studioG.visible = true; Object.assign(DESK, STUDIO_DESK);
+    sync(); invalidate({ shadows: true });
+  }
+  function exitStudio() {
+    if (!studioOn) return;
+    studioOn = false;
+    for (const [o, v] of savedVis) o.visible = v;
+    savedVis = null; studioG.visible = false; Object.assign(DESK, MAIN_DESK);
+    select(null); sync(); invalidate({ shadows: true });
+  }
+
+  // ---------- ควบคุมจากภายนอก ----------
+  function sync() {
+    const ok = studioOn || EXPECT.every((e) => furniture.some((f) => f.type === e.type && Math.abs(f.x - e.x) < 0.01 && Math.abs(f.z - e.z) < 0.01 && f.rotation % 360 === e.rotation));
+    const vis = enabled && ok;
+    if (root.visible !== vis) { root.visible = vis; invalidate({ shadows: true }); }
+    updateBar();
+  }
+  return {
+    root, sync, resetAll,
+    active, enterStudio, exitStudio,
+    get studio() { return studioOn; },
+    setEnabled(b) { enabled = b; sync(); },
+    setEditing(b) { editing = b; if (!b) select(null); updateBar(); },
+    setCables(b) { cablesG.visible = b; invalidate({ shadows: true }); },
+    setTags(b) { tagsG.visible = b; tagObjs.forEach((o) => { o.visible = b; o.userData.line.visible = b; }); invalidate(); },
+    onViewChange() { if (view !== 'desk') select(null); else updateBar(); },
+  };
+})();
 
 // ---------- ไฮไลต์ + เส้นระยะห่าง ----------
 const ACCENT = 0xb0703c, BAD = 0xc0392b;
@@ -1622,6 +2684,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 // =====================================================================
 // แสงกลางวัน / กลางคืน
 // =====================================================================
+// (ธีมมืด/สว่างของ UI อยู่ท้ายส่วนนี้ — สลับสีพื้นหลังฉากตอนโหมดกลางวันด้วย)
 let lightMode = 'day';
 function setLight(mode) {
   invalidate({ shadows: true });
@@ -1642,6 +2705,18 @@ function setLight(mode) {
   renderer.toneMappingExposure = night ? 1.15 : 1.05;
   document.querySelectorAll('#light button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
 }
+
+// ธีม UI มืด/สว่าง — พื้นหลังฉากตอนกลางวันเปลี่ยนตาม
+const themeBtn = document.getElementById('theme-btn');
+function applyTheme(t, save) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === 'dark' ? '☀️' : '🌙';
+  SKY.day.set(t === 'dark' ? SKY_DAY.dark : SKY_DAY.light);
+  if (save) { try { localStorage.setItem('dreamrooms-theme', t); } catch { /* ข้าม */ } }
+  setLight(lightMode);
+}
+themeBtn.addEventListener('click', () => applyTheme(isDark() ? 'light' : 'dark', true));
+applyTheme(document.documentElement.dataset.theme, false);
 
 // =====================================================================
 // มุมมอง
@@ -1862,6 +2937,8 @@ const walk = (() => {
 
 const EYE = { pos: new V((FIXED.entry.x0 + FIXED.entry.x1) / 2, 1.6, 0.35), look: new V(2.7, 1.3, D) };
 const BATH_EYE = { pos: new V(FIXED.bath.x1 - 0.3, 1.6, FIXED.bath.z0 + 0.25), look: new V(0.75, 1.2, FIXED.bath.z1) };   // ยืนในห้องน้ำหลังประตู มองไปโซนอาบน้ำ + หน้าต่าง
+const DESK_VIEW = { target: new V(3.62, 0.86, 4.25), dir: new V(-0.55, 0.42, -0.35).normalize(), dist: 2.1 };
+const DESK_STUDIO = { target: new V(3.4, 0.8, 4.2), dir: new V(-0.75, 0.45, -0.25).normalize(), dist: 3.6 };
 const BALC_EYE = { pos: new V(3.3, 1.6, D + 0.2), look: new V(2.2, 1.15, BALCONY_Z1) };
 const ORBIT = { dir: new V(-4.5, 5.9, -7.3).normalize(), target: new V(W / 2, 0.8, BALCONY_Z1 / 2) };
 const HINT = {
@@ -1871,6 +2948,7 @@ const HINT = {
   balcony: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
   orbit: 'ลากเพื่อหมุน · สกรอลเพื่อซูม · ดับเบิลคลิกพื้นเพื่อลงไปเดิน',
   free: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
+  desk: 'ลากชิ้นส่วน/สายได้เลย · ลากที่ว่างเพื่อหมุน · คลิกขวาลากเพื่อเลื่อน · สกรอลซูม · ดับเบิลคลิกชิ้นเพื่อซูมเข้า',
 };
 const perspTarget = new V();
 let freeEye = EYE;   // จุดเริ่มเดินจากการดับเบิลคลิกพื้น
@@ -1894,9 +2972,9 @@ function setView(name, instant = false) {
   controls.rotateSpeed = entry ? 0.35 : 1;
   persp.fov = entry ? 65 : 45;          // มุมสายตาคนยืน = เลนส์กว้างแบบมือถือ
   persp.updateProjectionMatrix();
-  controls.minDistance = entry ? 0.01 : 1.5;
-  controls.maxDistance = entry ? 1 : 40;
-  controls.maxPolarAngle = name === 'orbit' ? Math.PI * 0.48 : Math.PI;
+  controls.minDistance = entry ? 0.01 : 0.25;
+  controls.maxDistance = entry ? 1 : name === 'desk' ? (DeskSetup.studio ? 9 : 4) : 40;
+  controls.maxPolarAngle = name === 'orbit' ? Math.PI * 0.48 : Math.PI;   // มุมโต๊ะคอมหมุนลงไปดูใต้โต๊ะได้
   controls.mouseButtons.LEFT = top ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
   controls.touches.ONE = top ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
 
@@ -1918,12 +2996,14 @@ function setView(name, instant = false) {
       if (walk.touch) toast('ใช้จอยซ้ายล่างเพื่อเดิน · ลากจอเพื่อหันมอง');
       return;
     }
+    else if (name === 'desk') { const dv = DeskSetup.studio ? DESK_STUDIO : DESK_VIEW; target = dv.target.clone(); pos = target.clone().addScaledVector(dv.dir, dv.dist); }
     else { target = ORBIT.target.clone(); pos = target.clone().addScaledVector(ORBIT.dir, fitDistance(ORBIT.dir, target)); }
     controls.target.copy(perspTarget);
     if (instant) { persp.position.copy(pos); controls.target.copy(target); if (name === 'orbit') controls.autoRotate = true; }
     else tween = { from: { pos: persp.position.clone(), target: perspTarget.clone() }, to: { pos, target }, t0: performance.now(), dur: 850 };
   }
   controls.update();
+  DeskSetup.onViewChange();
 }
 controls.addEventListener('start', () => { controls.autoRotate = false; tween = null; });
 
@@ -1931,8 +3011,14 @@ controls.addEventListener('start', () => { controls.autoRotate = false; tween = 
 // ตัวเลือกแสดงผล
 // =====================================================================
 const tCut = document.getElementById('tCut'), tLabels = document.getElementById('tLabels');
-function syncLabels() { invalidate(); fixedLabels.forEach((o) => { o.visible = tLabels.checked && view !== 'top'; }); }
+const tPorts = document.getElementById('tPorts');
+function syncLabels() { invalidate(); fixedLabels.forEach((o) => { o.visible = tLabels.checked && view !== 'top' && !DeskSetup.studio; }); DeskSetup.setTags(tPorts.checked && view === 'desk'); }
 tLabels.addEventListener('change', syncLabels);
+tPorts.addEventListener('change', syncLabels);
+document.getElementById('tGear').addEventListener('change', (e) => DeskSetup.setEnabled(e.target.checked));
+document.getElementById('tEditDesk').addEventListener('change', (e) => DeskSetup.setEditing(e.target.checked));
+document.getElementById('bDeskReset').addEventListener('click', () => { DeskSetup.resetAll(); toast('รีเซ็ตโต๊ะคอมแล้ว'); });
+document.getElementById('tCables').addEventListener('change', (e) => DeskSetup.setCables(e.target.checked));
 document.getElementById('tGrid').addEventListener('change', (e) => { grid.visible = e.target.checked; });
 document.getElementById('tCeil').addEventListener('change', (e) => { ceiling.visible = e.target.checked; });
 document.getElementById('tCurtain').addEventListener('change', (e) => setCurtain(e.target.checked));
@@ -1975,6 +3061,7 @@ function floorPoint(e) {
   return raycaster.ray.intersectPlane(floorPlane, new V());
 }
 function pickFurniture(e) {
+  if (DeskSetup.active()) return null;            // โหมดแก้ไขโต๊ะคอม: ไม่ให้ลากเฟอร์นิเจอร์โดนโต๊ะ
   setRay(e);
   const hit = raycaster.intersectObjects(furnitureGroup.children, true)[0];
   let o = hit?.object;
@@ -2164,9 +3251,19 @@ document.getElementById('fList').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-id]');
   if (b) select(b.dataset.id);
 });
+const bStudio = document.getElementById('bStudio');
+function setStudio(on) {
+  if (on) { DeskSetup.enterStudio(); setView('desk'); }
+  else { DeskSetup.exitStudio(); setView('desk'); }
+  bStudio.textContent = on ? 'ออกจากห้องโต๊ะคอม (กลับห้องจริง)' : 'เข้าห้องโต๊ะคอม (ห้องโล่ง กว้างขึ้น)';
+  bStudio.classList.toggle('on', on);
+}
+bStudio.addEventListener('click', () => setStudio(!DeskSetup.studio));
 document.getElementById('views').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');
-  if (b) setView(b.dataset.view);
+  if (!b) return;
+  if (DeskSetup.studio && b.dataset.view !== 'desk') { DeskSetup.exitStudio(); bStudio.textContent = 'เข้าห้องโต๊ะคอม (ห้องโล่ง กว้างขึ้น)'; bStudio.classList.remove('on'); }
+  setView(b.dataset.view);
 });
 document.getElementById('light').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-mode]');
@@ -2346,7 +3443,7 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, activeCam);
   labelRenderer.render(scene, activeCam);
 });
-window.DreamRoom = { ROOM, FIXED, CATALOG, furniture, rebuild, setView, setLight, exportPNG, renderer, scene };
+window.DreamRoom = { ROOM, FIXED, CATALOG, furniture, rebuild, setView, setLight, exportPNG, renderer, scene, camera: persp, controls, DeskSetup };
 </script>
 </body>
 </html>
