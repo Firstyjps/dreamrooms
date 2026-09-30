@@ -3388,7 +3388,8 @@ function setStudio(on) {
   document.body.classList.toggle('studio', on);
 }
 bStudio.addEventListener('click', () => setStudio(!DeskSetup.studio));
-if (/[?&]studio\b/.test(location.search)) setTimeout(() => setStudio(true), 300);
+// ค่าเริ่มต้น = ห้องเปล่าสำหรับจัดโต๊ะคอม · เปิดห้องจริงด้วย ?room
+if (!/[?&]room\b/.test(location.search)) setTimeout(() => setStudio(true), 300);
 document.getElementById('views').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');
   if (!b) return;
