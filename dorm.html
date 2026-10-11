@@ -1,0 +1,2416 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>หอพัก 24 ตร.ม. · DreamRooms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  // ตั้งธีมก่อนวาดหน้า กันจอกะพริบ: ค่าที่บันทึกไว้ → ไม่งั้นตามระบบ
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('dreamrooms-theme'); } catch (e) {}
+    if (t !== 'dark' && t !== 'light') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+  :root {
+    --bg: #e9eef1;
+    --panel: rgba(255, 255, 255, 0.93);
+    --ink: #22262a;
+    --muted: #6b737b;
+    --line: rgba(34, 38, 42, 0.12);
+    --accent: #b0703c;
+    --accent-soft: #f4e7da;
+    --accent-ink: #7a4a22;
+    --warn: #b3261e;
+    --night: #1d2633;
+    --btn: #fff;
+    --chip: rgba(255, 255, 255, 0.85);
+    --chip-ink: #2b2f33;
+    --hover: rgba(0, 0, 0, 0.04);
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14181d;
+    --panel: rgba(30, 35, 41, 0.93);
+    --ink: #e6e9ec;
+    --muted: #98a1a9;
+    --line: rgba(230, 233, 236, 0.16);
+    --accent: #d68f56;
+    --accent-soft: #3a2c20;
+    --accent-ink: #f0c9a4;
+    --warn: #e5574d;
+    --btn: #2a3038;
+    --chip: rgba(30, 35, 41, 0.85);
+    --chip-ink: #e6e9ec;
+    --hover: rgba(255, 255, 255, 0.07);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 "IBM Plex Sans Thai", system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app { position: fixed; inset: 0; }
+  #app canvas { display: block; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+
+  button {
+    font: inherit; cursor: pointer; color: var(--ink);
+    border: 1px solid var(--line); background: var(--btn); border-radius: 8px;
+  }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  #panel {
+    position: fixed; top: 16px; left: 16px;
+    width: 288px; max-height: calc(100% - 32px); overflow: auto;
+    background: var(--panel);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px 12px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  }
+  #panel h1 { font-size: 16px; font-weight: 600; margin: 0; }
+  #panel .sub { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+  #panel section { margin-top: 14px; }
+  .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  #theme-btn { font-size: 14px; border-radius: 999px; padding: 2px 10px; line-height: 1.5; }
+  .head-btns { display: flex; gap: 6px; align-items: center; }
+  #more-btn { display: none; font-size: 12.5px; border-radius: 999px; padding: 3px 12px; white-space: nowrap; }
+  .label {
+    font-size: 11.5px; font-weight: 600; letter-spacing: .04em;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .seg { display: grid; gap: 6px; }
+  .seg.five { grid-template-columns: repeat(5, 1fr); }
+  .seg.six { grid-template-columns: repeat(3, 1fr); }
+  .seg.five button, .seg.six button { padding: 6px 2px; font-size: 12.5px; }
+  .seg.two { grid-template-columns: 1fr 1fr; margin-top: 6px; }
+  .seg button { font-size: 13px; padding: 6px 4px; }
+  .seg button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+  .seg button[data-mode="night"].on { background: var(--night); border-color: var(--night); color: #f1e6d4; }
+
+  .cat { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .cat button { text-align: left; padding: 6px 9px; line-height: 1.3; }
+  .cat button span { display: block; font-size: 13px; }
+  .cat button small { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+
+  #fList { list-style: none; margin: 0; padding: 0; }
+  #fList .item {
+    width: 100%; text-align: left; border: 0; border-radius: 6px; background: transparent;
+    padding: 5px 6px; display: block; line-height: 1.35;
+  }
+  #fList .item:hover { background: var(--hover); }
+  #fList .item.on { background: var(--accent-soft); }
+  #fList .nm { font-size: 13px; }
+  #fList .dim { display: block; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  #fList .warn { display: block; color: var(--warn); font-size: 11.5px; }
+  #fList .empty { color: var(--muted); font-size: 13px; }
+
+  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; font-size: 13px; }
+  .toggles label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .toggles input { accent-color: var(--accent); }
+  .files { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .files button { font-size: 13px; padding: 6px 4px; }
+  .files .wide { grid-column: 1 / -1; }
+  #bClear.armed { background: var(--warn); border-color: var(--warn); color: #fff; }
+
+  details { margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+  details summary { cursor: pointer; color: var(--ink); font-weight: 500; }
+  details p { margin: 6px 0 0; }
+
+  #selbar, #dsbar {
+    position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: 16px;
+    display: flex; align-items: center; gap: 6px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 6px 6px 6px 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .selinfo { display: flex; flex-direction: column; line-height: 1.25; margin-right: 6px; min-width: 0; }
+  .selinfo b { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .selinfo span { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #dsbar { top: auto; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); right: auto; left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); }
+  #dsbar[hidden] { display: none; }
+  #selbar button, #dsbar button { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
+  #bDel { color: var(--warn); }
+
+  #toast {
+    position: fixed; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: #22262a; color: #fff; font-size: 13px; padding: 7px 14px; border-radius: 999px;
+    opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; max-width: calc(100% - 32px);
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  #toast.show { opacity: 1; }
+  #panel.mini { width: 250px; padding: 10px 12px; }
+  #panel.mini h1 { font-size: 14px; }
+  #panel.mini .sub, #panel.mini #light { display: none; }
+  #panel.mini #more-btn { display: inline-block; }
+  #panel.mini:not(.open) #more { display: none; }
+  #panel.mini section { margin-top: 8px; }
+  #bootErr {
+    position: fixed; inset: 0; display: grid; place-content: center; gap: 10px; text-align: center;
+    background: var(--bg); color: var(--ink); padding: 24px; z-index: 10;
+  }
+  #bootErr span { color: var(--muted); }
+  #bootErr button { justify-self: center; padding: 8px 18px; }
+  #crosshair {
+    position: fixed; width: 6px; height: 6px; border-radius: 50%; transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95); box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.45); pointer-events: none;
+  }
+  #joy {
+    position: fixed; left: 20px; bottom: 20px; width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35); border: 1px solid rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); touch-action: none;
+    display: grid; place-items: center;
+  }
+  #joyKnob { width: 52px; height: 52px; border-radius: 50%; background: rgba(34, 38, 42, 0.55); pointer-events: none; }
+  #toast.bad { background: var(--warn); }
+
+  #hud {
+    position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    display: flex; gap: 14px; align-items: center; white-space: nowrap;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px; font-size: 12.5px; color: var(--muted);
+  }
+  #coord { color: var(--ink); font-variant-numeric: tabular-nums; min-width: 128px; }
+
+  .tag {
+    font: 500 12px "IBM Plex Sans Thai", system-ui, sans-serif;
+    color: var(--chip-ink); background: var(--chip);
+    border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 6px; padding: 1px 7px;
+    white-space: nowrap;
+  }
+  .plab {
+    font: 500 10.5px "IBM Plex Sans Thai", system-ui, sans-serif;
+    color: #fff; background: rgba(20, 24, 30, 0.82); border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 5px; padding: 0 6px; white-space: nowrap; pointer-events: none;
+  }
+  .plab.idle { opacity: 0.55; }
+  .gap {
+    font: 600 11.5px "IBM Plex Sans Thai", system-ui, sans-serif;
+    color: #fff; background: var(--accent); border-radius: 999px; padding: 0 7px;
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+
+  @media (max-width: 640px) {
+    #panel {
+      top: auto; left: 16px; right: 16px; width: auto;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      max-height: 55%; padding: 12px 14px;
+    }
+    #panel .sub { font-size: 12px; }
+    #panel section { margin-top: 10px; }
+    #more-btn { display: inline-block; }
+    #panel:not(.open) #more { display: none; }
+    #hud { display: none; }
+    #toast { bottom: auto; top: calc(76px + env(safe-area-inset-top, 0px)); }
+    #selbar { left: 16px; right: 16px; }
+    .selinfo { flex: 1; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="bootErr" hidden>
+  <b>โหลดโมเดล 3D ไม่สำเร็จ</b>
+  <span>ตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า — หรือเบราว์เซอร์นี้อาจไม่รองรับ WebGL</span>
+  <button type="button" onclick="location.reload()">รีเฟรช</button>
+</div>
+<script>
+  // ถ้าโมดูลหลักไม่เริ่มใน 12 วินาที (CDN/เน็ต/WebGL มีปัญหา) ให้แสดงข้อความแทนจอว่าง
+  setTimeout(() => { if (!window.DreamRoom) document.getElementById('bootErr').hidden = false; }, 12000);
+</script>
+<div id="labels"></div>
+
+<aside id="panel">
+  <div class="head">
+    <div>
+      <h1>หอพักใหม่ · 24 ตร.ม.</h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <div class="head-btns">
+      <button id="theme-btn" type="button" aria-label="สลับธีมมืด/สว่าง" title="ธีมมืด/สว่าง">🌙</button>
+      <button id="more-btn" type="button" aria-expanded="false" aria-controls="more">เมนู</button>
+    </div>
+  </div>
+
+  <section>
+    <div class="label">มุมมอง</div>
+    <div class="seg five" id="views">
+      <button type="button" data-view="top">มุมบน</button>
+      <button type="button" data-view="entry">ประตู</button>
+      <button type="button" data-view="orbit" class="on">รอบห้อง</button>
+      <button type="button" data-view="bath">ห้องน้ำ</button>
+      <button type="button" data-view="balcony">ระเบียง</button>
+    </div>
+
+    <div class="seg two" id="light">
+      <button type="button" data-mode="day" class="on">กลางวัน</button>
+      <button type="button" data-mode="night">กลางคืน</button>
+    </div>
+  </section>
+
+  <div id="more">
+    <section>
+      <div class="label">เพิ่มเฟอร์นิเจอร์</div>
+      <div class="cat" id="cat"></div>
+    </section>
+
+    <section>
+      <div class="label">ในห้อง <span id="fCount"></span></div>
+      <ul id="fList"></ul>
+    </section>
+
+    <section class="toggles">
+      <label><input type="checkbox" id="tCut" checked> ผนังโปร่งใส</label>
+      <label><input type="checkbox" id="tCeil" checked> เพดาน</label>
+      <label><input type="checkbox" id="tGrid"> กริด 0.5 ม.</label>
+      <label><input type="checkbox" id="tLabels" checked> ป้ายชื่อ</label>
+      <label><input type="checkbox" id="tCurtain"> ปิดม่าน</label>
+    </section>
+
+    <section>
+      <div class="label">ไฟล์</div>
+      <div class="files">
+        <button type="button" id="bSave">บันทึก JSON</button>
+        <button type="button" id="bLoad">โหลด JSON</button>
+        <button type="button" id="bPng">ภาพแปลน PNG</button>
+        <button type="button" id="bClear">ล้างห้อง</button>
+        <button type="button" id="bDefault" class="wide">จัดแบบในวิดีโอ</button>
+      </div>
+      <input type="file" id="fileIn" accept=".json,application/json" hidden>
+    </section>
+
+    <details>
+      <summary>วิธีใช้และพิกัด</summary>
+      <p>แตะหรือคลิกเฟอร์นิเจอร์เพื่อเลือก แล้วลากไปบนพื้น · <b>R</b> หมุน 90° · <b>Delete</b> ลบ · กด Shift ค้างขณะลากเพื่อขยับทีละ 1 ซม.</p>
+      <p id="coordHelp"></p>
+      <p><b>ขนาดทั้งหมดประมาณจากวิดีโอ ยังไม่ได้วัด</b> — วัดจริงแล้วบอกตัวเลขมาเพื่อแก้ได้</p>
+      <p>Layout บันทึกในเบราว์เซอร์นี้อัตโนมัติ · <a href="./?room">ห้องเดิม The Four Lights</a></p>
+    </details>
+  </div>
+</aside>
+
+<div id="selbar" hidden>
+  <div class="selinfo"><b id="selName"></b><span id="selDim"></span></div>
+  <button type="button" id="bRot">หมุน 90°</button>
+  <button type="button" id="bDel">ลบ</button>
+  <button type="button" id="bDesel" aria-label="ยกเลิกการเลือก">✕</button>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<div id="crosshair" hidden></div>
+<div id="joy" hidden aria-label="จอยสติ๊กเดิน"><div id="joyKnob"></div></div>
+
+<div id="hud">
+  <span id="coord">ชี้บนพื้นเพื่อดูพิกัด</span>
+  <span class="hint" id="hint"></span>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const V = THREE.Vector3;
+const deg = THREE.MathUtils.degToRad;
+
+// =====================================================================
+// หอพักจริง 24 ตร.ม. (จากวิดีโอทัวร์ห้อง) — **ยังไม่ได้วัด**: ตัวเลขทั้งหมดประมาณจากสัดส่วนในวิดีโอ + ขนาดเฟอร์นิเจอร์มาตรฐาน
+// (เตียง 3.5 ฟุต · โต๊ะกระจก 100×36 · ประตู 0.9) — แก้ตัวเลขที่นี่เมื่อวัดจริง
+// 1 unit = 1 m · ทิศ: ยืนที่ประตู (Z=0) หันหน้าไปทางระเบียง
+//   ขวามือ = X=0 (ฝั่งตู้เสื้อผ้า / เตียง / ห้องน้ำ) · ซ้ายมือ = X=W (ฝั่งโต๊ะกระจก)
+//   ห้องหลักลึกถึง Z=bath.z0 (ผนังหน้าห้องน้ำ: แอร์ + หัวเตียง) · ด้านในสุด: ห้องน้ำ (ขวา ยาวเลยแนวระเบียง) + ซุ้มประตูระเบียง (ซ้าย ลึกถึง Z=D)
+// =====================================================================
+const ROOM = { W: 3.4, D: 5.9, H: 2.6, WALL: 0.1 };               // D = ความลึกถึงผนังประตูระเบียง
+const { W, D, H, WALL: T } = ROOM;
+
+const FIXED = {
+  entry:  { x0: W - 1.05, x1: W - 0.15, h: 2.10 },                 // ประตูไม้ลายไม้อ่อน 0.9 ชิดมุมซ้าย บานพับฝั่งมุม (X=W) เปิดเข้าห้อง
+  pillar: { x0: W - 0.20, x1: W, z0: D - 0.40, z1: D },            // เสาข้างประตูระเบียง ฝั่งโต๊ะ
+  bath:   { x1: 1.80, z0: 4.60, z1: D + T + 0.95,                  // ห้องน้ำ X 0–1.8 · ผนังหน้า Z 4.6 (แอร์ · ข้างเตียงชิด)
+            // z1: ยาวเลยแนวประตูระเบียงถึงขอบระเบียง — **ยังไม่ยืนยัน** (คลิปไม่มีมุมยืนยัน · บานไม้น้ำตาลข้างระเบียงอาจเป็นช่องเซอร์วิสแทน)
+            doorZ0: D - 0.95, doorZ1: D - 0.25, doorH: 2.05 },     // ประตู 0.70 บนผนังข้าง เปิดจากซุ้ม เข้าด้านใน (บานพับฝั่ง doorZ0)
+            // บานพับ: วงกบฝั่งระเบียง (doorZ1) มีแผ่นรับกลอนที่ความสูงมือจับ (คลิป 5.6–7.2 / 12–13.5 วิ) → ฝั่งกลอน = doorZ1, บานพับ = doorZ0
+  slider: { x0: 1.92, x1: 3.14, h: 2.10 },                         // ประตูกระจกบานเลื่อนกรอบขาว ที่ Z=D
+  ac:     { w: 0.82, h: 0.28, d: 0.21, cx: 0.55, y0: 2.18 },       // แอร์ติดผนังหน้าห้องน้ำ ใกล้มุมหัวเตียง (ซ้ายมือเมื่อหันหน้าเข้าหัวเตียง)
+  lamps:  [[1.70, 2.30], [2.60, 5.25]],                            // โคมซาลาเปา LED กลม (ห้องหลัก + ซุ้มระเบียง)
+};
+const BALCONY_Z1 = FIXED.bath.z1 + T;                              // ขอบนอกอาคาร
+// พื้นที่ภายใน: ห้องหลัก + ซุ้ม + ห้องน้ำ + ระเบียง (ไม่รวมผนัง — ตัวเลข 24 ตร.ม. ของหอน่าจะรวมผนัง)
+const AREA = W * FIXED.bath.z0 + (W - FIXED.bath.x1) * (D - FIXED.bath.z0)
+  + (FIXED.bath.x1 - T) * (FIXED.bath.z1 - FIXED.bath.z0 - T) + (W - FIXED.bath.x1) * (BALCONY_Z1 - D - T);
+
+// พื้นที่ที่เฟอร์นิเจอร์ห้ามทับ (ผนังเป็นกรอบนอกห้อง)
+const STATIC = [
+  { name: 'ผนัง', x0: -99, x1: 0, z0: -99, z1: 99 },
+  { name: 'ผนัง', x0: W, x1: 99, z0: -99, z1: 99 },
+  { name: 'ผนัง', x0: -99, x1: 99, z0: -99, z1: 0 },
+  { name: 'ผนัง', x0: -99, x1: 99, z0: D, z1: 99 },
+  { name: 'ห้องน้ำ', x0: -99, x1: FIXED.bath.x1, z0: FIXED.bath.z0, z1: 99 },
+  { name: 'เสา', ...FIXED.pillar },
+  { name: 'รัศมีเปิดประตู', x0: FIXED.entry.x0, x1: FIXED.entry.x1, z0: 0, z1: FIXED.entry.x1 - FIXED.entry.x0 },
+];
+
+// =====================================================================
+// เฟอร์นิเจอร์ — ขนาดมาตรฐาน (ม.) ด้านหน้าของชิ้นหันไปทาง -Z ที่ rotation 0
+// =====================================================================
+const CATALOG = {
+  bed35:      { name: 'เตียง 3.5 ฟุต',        w: 1.12, d: 2.08, h: 0.95, color: '#1f1f21' },
+  nightstand: { name: 'ตู้ข้างเตียง 2 ลิ้นชัก', w: 0.40, d: 0.40, h: 0.55, color: '#d6b78c' },
+  glassdesk:  { name: 'โต๊ะกระจก 100×36',     w: 1.00, d: 0.36, h: 0.74, color: '#202124' },
+  adde:       { name: 'เก้าอี้เหล็กดำ',        w: 0.39, d: 0.47, h: 0.77, color: '#1c1d1f' },
+  wardrobe2:  { name: 'ตู้เสื้อผ้าไม้ + กระจก', w: 0.90, d: 0.55, h: 2.00, color: '#cfc1ab' },
+  bin:        { name: 'ถังขยะ',               w: 0.24, d: 0.24, h: 0.32, color: '#5d6166' },
+  desk160:    { name: 'โต๊ะ 160×60',          w: 1.60, d: 0.60, h: 0.75, color: '#f1f1ef' },
+  desk:       { name: 'โต๊ะ 120×60',          w: 1.20, d: 0.60, h: 0.75, color: '#f1f1ef' },
+  chair:      { name: 'เก้าอี้ทำงาน',          w: 0.55, d: 0.55, h: 0.90, color: '#2b2d30' },
+  fridge:     { name: 'ตู้เย็นเล็ก',           w: 0.50, d: 0.55, h: 0.85, color: '#2a2b2e' },
+  rack:       { name: 'ราวแขวนผ้า',           w: 0.80, d: 0.45, h: 0.95, color: '#c9a06a' },
+  bed:        { name: 'เตียง 5 ฟุต',          w: 1.60, d: 2.10, h: 1.00, color: '#4a342a' },
+};
+
+// การจัดตามวิดีโอ (+ รูปที่ user ยืนยัน): เตียงแนวขวาง หัวเตียงชนผนังขวา X=0 · ข้างเตียงชิดผนังห้องน้ำที่มีแอร์ · ปลายเตียงยื่นเลยมุมห้องน้ำเล็กน้อย
+// ตู้ข้างเตียงชิดผนังขวาอีกฝั่งของหัวเตียง · โต๊ะกระจก 2 ตัว + เก้าอี้ชิดผนังซ้ายถึงเสา
+// ตู้เสื้อผ้าหลังชิดผนังทางเข้า มุมขวา หันหน้าเข้าห้อง
+const DEFAULT_LAYOUT = [
+  { type: 'bed35',      x: 1.04,        z: FIXED.bath.z0 - 0.56, rotation: 270 },
+  { type: 'nightstand', x: 0.22,        z: FIXED.bath.z0 - 1.12 - 0.21, rotation: 270 },
+  { type: 'glassdesk',  x: W - 0.18,    z: 4.65, rotation: 90 },
+  { type: 'glassdesk',  x: W - 0.18,    z: 3.65, rotation: 90 },
+  { type: 'adde',       x: W - 0.62,    z: 4.65, rotation: 270 },
+  { type: 'adde',       x: W - 0.62,    z: 3.65, rotation: 270 },
+  { type: 'bin',        x: W - 0.16,    z: 5.30, rotation: 0 },
+  { type: 'wardrobe2',  x: 0.50,        z: 0.275, rotation: 180 },
+];
+
+// {id, type, name, w, d, h, x, z, rotation, color} — x, z = กึ่งกลางบนพื้น · w ตาม X · d ตาม Z · rotation องศา
+const furniture = [];
+
+// =====================================================================
+// Renderer / scene / cameras
+// =====================================================================
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.autoUpdate = false;              // เงาคำนวณใหม่เฉพาะตอนฉากเปลี่ยน (invalidate)
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches;
+// ---------- วาดเฉพาะตอนจำเป็น: กล้องขยับ · ฉากเปลี่ยน · มีการกด/พิมพ์/ลากในช่วงสั้น ๆ ----------
+let needFrame = true, dirtyUntil = 0;
+function invalidate({ shadows = false, ms = 0 } = {}) {
+  needFrame = true;
+  if (shadows) renderer.shadowMap.needsUpdate = true;
+  if (ms) dirtyUntil = Math.max(dirtyUntil, performance.now() + ms);
+}
+renderer.shadowMap.needsUpdate = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
+const canvas = renderer.domElement;
+const envMap = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;  // เงาสะท้อนพื้นกระเบื้อง
+
+const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
+labelRenderer.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+const SKY_DAY = { light: 0xe9eef1, dark: 0x262c33 };
+const isDark = () => document.documentElement.dataset.theme === 'dark';
+const SKY = { day: new THREE.Color(isDark() ? SKY_DAY.dark : SKY_DAY.light), night: new THREE.Color(0x141b26) };
+scene.background = SKY.day.clone();
+
+const persp = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.05, 100);
+const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 60);
+let activeCam = persp;
+
+const controls = new OrbitControls(persp, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.screenSpacePanning = true;
+controls.minZoom = 0.6;
+controls.maxZoom = 8;
+
+// ---------- lights ----------
+const hemi = new THREE.HemisphereLight(0xffffff, 0xd8c9b2, 1.35);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xfff0da, 2.4);
+sun.position.set(0.2, 6.5, 13.5);   // แดดเข้าจากฝั่งระเบียง
+sun.target.position.set(1.7, 0, 3.5);
+sun.castShadow = true;
+sun.shadow.mapSize.setScalar(IS_TOUCH ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+scene.add(sun, sun.target);
+
+// โคมซาลาเปา LED = spot มุมกว้างส่องลง (ไม่ส่องเพดานเหมือนไฟจริง)
+const DOWNLIGHTS = FIXED.lamps;
+const downlights = DOWNLIGHTS.map(([x, z]) => {
+  const p = new THREE.SpotLight(0xfff4e6, 2.6, 0, Math.PI / 2.2, 0.8, 2);
+  p.position.set(x, H - 0.08, z);
+  p.target.position.set(x, 0, z);
+  scene.add(p, p.target);
+  return p;
+});
+const bathLight = new THREE.PointLight(0xf4f6ff, 0, 0, 2);
+bathLight.position.set((FIXED.bath.x1 - T) / 2, 2.3, (FIXED.bath.z0 + FIXED.bath.z1) / 2);
+const balconyLight = new THREE.PointLight(0xffd9a8, 0, 0, 2);
+balconyLight.position.set((FIXED.bath.x1 + W) / 2, 2.3, D + 0.5);
+scene.add(bathLight, balconyLight);
+
+// ---------- helpers ----------
+const rand = (seed) => () => {
+  seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
+// กล่องจากขอบ min/max (ใช้ได้ทั้งพิกัดโลกและพิกัดภายใน group)
+function box(mat, x0, x1, y0, y1, z0, z1, { cast = true, receive = true } = {}) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mat);
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  m.castShadow = cast;
+  m.receiveShadow = receive;
+  return m;
+}
+
+function canvasTexture(size, draw, repeatX, repeatY) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  draw(c.getContext('2d'), size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.repeat.set(repeatX, repeatY);
+  return tex;
+}
+
+// กระเบื้องพื้นเงา 60 × 60 ซม. โทนเทาอ่อน · texture 1 แผ่น = 1.2 × 1.2 ม. (UV ของพื้นเป็นเมตร)
+function floorTileTexture() {
+  return canvasTexture(1024, (g, S) => {
+    const r = rand(5), half = S / 2;
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+      g.fillStyle = `hsl(210, 4%, ${84 + r() * 3}%)`;
+      g.fillRect(i * half, j * half, half, half);
+      for (let k = 0; k < 40; k++) {
+        g.fillStyle = `rgba(160, 152, 140, ${0.015 + r() * 0.03})`;
+        g.beginPath();
+        g.arc(i * half + r() * half, j * half + r() * half, 6 + r() * 30, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+    g.fillStyle = '#b4b8bb';
+    for (const p of [0, half]) { g.fillRect(p, 0, 3, S); g.fillRect(0, p, S, 3); }
+  }, 1 / 1.2, 1 / 1.2);
+}
+
+// กระเบื้องห้องน้ำ 30 × 30 ซม. โทนเบจ
+function tileTexture(w, d, fill = '#d8c3a2', grout = '#b39c7c') {
+  return canvasTexture(512, (g, S) => {
+    g.fillStyle = fill; g.fillRect(0, 0, S, S);
+    g.fillStyle = grout;
+    for (const p of [0, S / 2]) { g.fillRect(p, 0, 3, S); g.fillRect(0, p, S, 3); }
+  }, w / 0.6, d / 0.6);
+}
+
+// ป้ายข้อความวางราบ อ่านตรงเมื่อมองจากบน (ประตูอยู่ล่างจอ) · rotation.y ของ group = หมุนทวนเข็มบนจอ
+function textPlane(text, { size = 0.2, maxW = Infinity, color = '#2b3036', bg = 'rgba(255,255,255,0.94)' } = {}) {
+  const px = 96, c = document.createElement('canvas'), g = c.getContext('2d');
+  const font = `600 ${Math.round(px * 0.6)}px "IBM Plex Sans Thai", system-ui, sans-serif`;
+  g.font = font;
+  const tw = Math.ceil(g.measureText(text).width + px * 0.5);
+  c.width = tw; c.height = px;
+  if (bg) {
+    g.fillStyle = bg;
+    if (g.roundRect) { g.beginPath(); g.roundRect(0, 0, tw, px, px * 0.22); g.fill(); } else g.fillRect(0, 0, tw, px);
+  }
+  g.font = font;
+  g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, tw / 2, px * 0.55);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  let h = size, w = size * tw / px;
+  if (w > maxW) { h *= maxW / w; w = maxW; }
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+  mesh.rotation.set(-Math.PI / 2, 0, Math.PI);
+  mesh.renderOrder = 4;
+  const grp = new THREE.Group();
+  grp.add(mesh);
+  return grp;
+}
+
+function disposeGroup(group) {
+  group.traverse((o) => {
+    o.geometry?.dispose();
+    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    mats.forEach((m) => { m.map?.dispose(); m.dispose(); });
+  });
+  group.clear();
+}
+
+// ---------- materials ----------
+const WALL_CREAM = 0xefe9da;
+// ประตูทางเข้า: ลายไม้อ่อนแนวตั้ง (ตามวิดีโอ)
+const DOOR_TEX = canvasTexture(512, (g, S) => {
+  const r = rand(31);
+  g.fillStyle = '#c9a57a'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 110; i++) {
+    g.fillStyle = `rgba(${r() < 0.5 ? '120, 84, 48' : '238, 216, 182'}, ${0.06 + r() * 0.12})`;
+    g.fillRect(r() * S, 0, 1 + r() * 4, S);
+  }
+}, 1, 1);
+const MAT = {
+  wall:     new THREE.MeshStandardMaterial({ color: WALL_CREAM, roughness: 0.92 }),   // ขาวครีม
+  ceiling:  new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 }),
+  floor:    new THREE.MeshStandardMaterial({ map: floorTileTexture(), roughness: 0.1, envMap, envMapIntensity: 0.55 }),
+  bathWall: new THREE.MeshStandardMaterial({ color: 0xf4f4f1, roughness: 0.2 }),
+  slab:     new THREE.MeshStandardMaterial({ color: 0xc9c6c0, roughness: 1 }),
+  door:     new THREE.MeshStandardMaterial({ color: 0xf6f6f3, roughness: 0.45 }),             // ประตูห้องน้ำขาว
+  doorWood: new THREE.MeshStandardMaterial({ map: DOOR_TEX, roughness: 0.6 }),
+  doorFrame: new THREE.MeshStandardMaterial({ color: 0x3a2e26, roughness: 0.6 }),             // วงกบน้ำตาลเข้ม
+  frame:    new THREE.MeshStandardMaterial({ color: 0xe9eae8, roughness: 0.4, metalness: 0.2 }),
+  metal:    new THREE.MeshStandardMaterial({ color: 0xc4c8cc, roughness: 0.35, metalness: 0.3 }),
+  glass:    new THREE.MeshStandardMaterial({ color: 0xcfe6ef, roughness: 0.05, transparent: true, opacity: 0.2, depthWrite: false }),
+  mirror:   new THREE.MeshStandardMaterial({ color: 0xe4ebee, roughness: 0.04, metalness: 0.35, envMap, envMapIntensity: 1.2 }),
+  white:    new THREE.MeshStandardMaterial({ color: 0xf4f2ee, roughness: 0.5 }),
+  porcelain: new THREE.MeshStandardMaterial({ color: 0xfbfbfa, roughness: 0.2 }),
+  black:    new THREE.MeshStandardMaterial({ color: 0x1c1d1f, roughness: 0.2 }),
+  ac:       new THREE.MeshStandardMaterial({ color: 0xfbfbfa, roughness: 0.5 }),
+  groove:   new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.8 }),
+  downlight: new THREE.MeshBasicMaterial({ color: 0xfffaf0 }),
+};
+// ผนังที่บังกล้อง: โปร่งใส แต่ยังทอดเงาเหมือนเดิม
+const GHOST = new THREE.MeshStandardMaterial({ color: WALL_CREAM, roughness: 1, transparent: true, opacity: 0.13, depthWrite: false });
+
+// =====================================================================
+// ผนัง: ประกอบจากกล่องรอบช่องเปิด · พิกัดภายใน u = ตามแนวผนัง, v = สูง, z = ความหนา 0..WALL
+// =====================================================================
+function buildWall(len, openings = [], wallMat = MAT.wall) {
+  const g = new THREE.Group();
+  const seg = (u0, u1, v0, v1) => {
+    if (u1 - u0 > 1e-4 && v1 - v0 > 1e-4) g.add(box(wallMat, u0, u1, v0, v1, 0, T));
+  };
+  let cur = 0;
+  for (const o of [...openings].sort((a, b) => a.u0 - b.u0)) {
+    seg(cur, o.u0, 0, H);          // ช่วงผนังก่อนช่องเปิด
+    seg(o.u0, o.u1, o.v1, H);      // ทับหลัง
+    seg(o.u0, o.u1, 0, o.v0 || 0); // ใต้ขอบ (ถ้ามี)
+    cur = o.u1;
+  }
+  seg(cur, len, 0, H);
+  return g;
+}
+// ผนังขนานแกน X: ผิวในห้องอยู่ที่ z = face, ความหนายื่นไปทาง dir (-1 → -Z, +1 → +Z)
+// ของที่แปะผนัง: u = x - x0 · ฝั่งในห้อง = local z > T (dir -1) หรือ z < 0 (dir +1)
+function wallX(x0, x1, face, dir, openings = [], wallMat) {
+  const g = buildWall(x1 - x0, openings.map((o) => ({ u0: o.a0 - x0, u1: o.a1 - x0, v0: o.v0, v1: o.h })), wallMat);
+  g.position.set(x0, 0, dir < 0 ? face - T : face);
+  return g;
+}
+// ผนังขนานแกน Z: ผิวในห้องอยู่ที่ x = face, ความหนายื่นไปทาง dir (-1 → -X, +1 → +X)
+// ของที่แปะผนัง: u = z - z0 · ฝั่งในห้อง = local z < 0 (dir -1) หรือ z > T (dir +1)
+function wallZ(z0, z1, face, dir, openings = [], wallMat) {
+  const g = buildWall(z1 - z0, openings.map((o) => ({ u0: o.a0 - z0, u1: o.a1 - z0, v0: o.v0, v1: o.h })), wallMat);
+  g.rotation.y = -Math.PI / 2;     // u → +Z, ความหนา → -X
+  g.position.set(dir < 0 ? face : face + T, 0, z0);
+  return g;
+}
+// บานเลื่อนกระจก 2 บานในช่อง u a..b (พิกัดภายในผนัง)
+function addSlider(wall, a, b, gh) {
+  const p = 0.05, inner = b - a - 2 * p, pw = inner / 2 + 0.015, v0 = 0.03, v1 = gh - p, q = 0.045;
+  wall.add(box(MAT.frame, a, b, gh - p, gh, 0, T));
+  wall.add(box(MAT.frame, a, a + p, 0, gh, 0, T));
+  wall.add(box(MAT.frame, b - p, b, 0, gh, 0, T));
+  wall.add(box(MAT.frame, a, b, 0, 0.03, 0, T));
+  const sash = (s0, s1, z) => {
+    wall.add(box(MAT.frame, s0, s1, v1 - q, v1, z - 0.015, z + 0.015));
+    wall.add(box(MAT.frame, s0, s1, v0, v0 + q, z - 0.015, z + 0.015));
+    wall.add(box(MAT.frame, s0, s0 + q, v0, v1, z - 0.015, z + 0.015));
+    wall.add(box(MAT.frame, s1 - q, s1, v0, v1, z - 0.015, z + 0.015));
+    wall.add(box(MAT.frame, s0, s1, 0.95, 0.99, z - 0.012, z + 0.012));   // คานกลางบาน
+    const pane = box(MAT.glass, s0 + q, s1 - q, v0 + q, v1 - q, z - 0.004, z + 0.004, { cast: false, receive: false });
+    pane.renderOrder = 2;
+    wall.add(pane);
+  };
+  sash(a + p, a + p + pw, T * 0.3);
+  sash(b - p - pw, b - p, T * 0.7);
+}
+
+const F = FIXED, B = FIXED.bath;
+// ผนังแต่ละด้านห่อด้วย group ที่ origin → ของที่แปะผนังใช้พิกัดโลกได้ตรง ๆ (และโปร่งใสไปพร้อมผนัง)
+
+// --- ผนังทางเข้า Z=0: ประตูไม้ลายไม้อ่อน (เซาะร่องแนวนอน วงกบน้ำตาลเข้ม) · รีโมตแอร์ในที่เสียบ + สวิตช์ · ตู้ไฟเหนือมุมประตู ---
+const wallFront = new THREE.Group();
+wallFront.add(wallX(-T, W + T, 0, -1, [{ a0: F.entry.x0, a1: F.entry.x1, h: F.entry.h }]));
+{
+  const { x0, x1, h } = F.entry, zc = -T / 2, zr = 0;   // zc = กึ่งกลางผนัง · zr = ผิวผนังฝั่งในห้อง
+  wallFront.add(box(MAT.doorWood, x0 + 0.01, x1 - 0.01, 0.005, h - 0.005, zc - 0.02, zc + 0.02));
+  for (const y of [0.42, 0.84, 1.26, 1.68]) wallFront.add(box(MAT.doorFrame, x0 + 0.2, x1 - 0.04, y - 0.004, y + 0.004, zc + 0.02, zc + 0.024, { cast: false }));
+  wallFront.add(box(MAT.doorFrame, x0 + 0.17, x0 + 0.178, 0.04, h - 0.04, zc + 0.02, zc + 0.024, { cast: false }));
+  wallFront.add(box(MAT.doorFrame, x0 - 0.05, x0, 0, h + 0.05, zr, zr + 0.015));          // วงกบ
+  wallFront.add(box(MAT.doorFrame, x1, x1 + 0.05, 0, h + 0.05, zr, zr + 0.015));
+  wallFront.add(box(MAT.doorFrame, x0 - 0.05, x1 + 0.05, h, h + 0.05, zr, zr + 0.015));
+  wallFront.add(box(MAT.metal, x0 + 0.05, x0 + 0.09, 0.93, 1.13, zc + 0.02, zc + 0.03));   // มือจับก้านโยก (ฝั่งไกลบานพับ)
+  wallFront.add(box(MAT.metal, x0 + 0.06, x0 + 0.2, 1.02, 1.045, zc + 0.03, zc + 0.08));
+  const cx = (x0 + x1) / 2 + 0.05;
+  wallFront.add(box(MAT.black, cx - 0.008, cx + 0.008, 1.54, 1.56, zc + 0.02, zc + 0.026, { cast: false }));   // ตาแมว
+  const kx = x0 - 0.28;                                                                     // รีโมตแอร์ในที่เสียบติดผนัง (คลิป 47.5–48.5 วิ) + สวิตช์ไฟ + ปลั๊กล่าง
+  wallFront.add(box(MAT.white, kx - 0.035, kx + 0.035, 1.16, 1.35, zr, zr + 0.03));
+  wallFront.add(box(MAT.black, kx - 0.024, kx + 0.024, 1.29, 1.33, zr + 0.03, zr + 0.032, { cast: false }));     // จอรีโมต
+  wallFront.add(box(MAT.groove, kx - 0.024, kx + 0.024, 1.18, 1.27, zr + 0.03, zr + 0.032, { cast: false }));    // แผงปุ่ม
+  wallFront.add(box(MAT.white, kx - 0.2, kx - 0.12, 1.18, 1.26, zr, zr + 0.012));
+  wallFront.add(box(MAT.white, kx - 0.04, kx + 0.04, 0.28, 0.35, zr, zr + 0.012));
+  wallFront.add(box(new THREE.MeshStandardMaterial({ color: 0xd7dadc, roughness: 0.5 }), x1 - 0.12, x1 + 0.14, 2.2, 2.5, zr, zr + 0.09));   // ตู้ไฟ
+}
+
+// --- ผนังขวา X=0 ยาวถึงหลังห้องน้ำ + ปลั๊กล่าง ---
+// z 1.4: ระหว่างตู้เสื้อผ้ากับตู้ข้างเตียง ค่อนไปทางตู้ (คลิป 28 วิ ตำแหน่งประมาณ) · หลังหัวเตียง: ยังไม่ยืนยัน (เตียงบังในคลิป)
+const wallRight = new THREE.Group();
+wallRight.add(wallZ(0, B.z1, 0, -1));
+for (const z of [1.4, B.z0 - 0.55]) wallRight.add(box(MAT.white, 0, 0.012, 0.3, 0.37, z - 0.04, z + 0.04));
+
+// --- ผนังซ้าย X=W (ฝั่งโต๊ะ) ยาวถึงขอบระเบียง + เสาข้างประตูระเบียง + ปลั๊กเหนือโต๊ะ ---
+const wallLeft = new THREE.Group();
+wallLeft.add(wallZ(0, BALCONY_Z1, W, 1));
+wallLeft.add(box(MAT.wall, F.pillar.x0, F.pillar.x1, 0, H, F.pillar.z0, F.pillar.z1));
+// ปลั๊กกลุ่มเดียว 3 ช่องเหนือโต๊ะตัวหน้า ค่อนไปทางปลายฝั่งทางเข้า (คลิป 42–44 วิ): ฝาเปล่า/สวิตช์ 1 + เต้ารับ 2 · เหนือโต๊ะตัวใน (ใกล้เสา) ไม่มี
+[3.30, 3.43, 3.56].forEach((z, i) => {
+  wallLeft.add(box(MAT.white, W - 0.012, W, 0.92, 1.0, z - 0.06, z + 0.06));
+  if (i) for (const dz of [-0.02, 0.02]) wallLeft.add(box(MAT.black, W - 0.014, W - 0.012, 0.955, 0.97, z + dz - 0.004, z + dz + 0.004, { cast: false }));
+});
+
+// --- ผนังระเบียง Z=D (ช่วงซุ้ม) + ประตูกระจกบานเลื่อนกรอบขาว ---
+const wallBalc = new THREE.Group();
+{
+  const wb = wallX(B.x1, W + T, D, 1, [{ a0: F.slider.x0, a1: F.slider.x1, h: F.slider.h }]);
+  addSlider(wb, F.slider.x0 - B.x1, F.slider.x1 - B.x1, F.slider.h);
+  wallBalc.add(wb);
+}
+
+// --- ห้องน้ำ: ผนังหน้า (แอร์) · ผนังข้าง (ประตูเปิดออกมาในซุ้ม) · ผนังนอกอาคาร ---
+const bathFront = new THREE.Group();
+bathFront.add(wallX(0, B.x1, B.z0, 1));
+{ // แอร์ติดผนังหน้าห้องน้ำ เหนือหัวเตียง
+  const ac = F.ac, x0 = ac.cx - ac.w / 2, x1 = ac.cx + ac.w / 2, z = B.z0;
+  bathFront.add(box(MAT.ac, x0, x1, ac.y0, ac.y0 + ac.h, z - ac.d, z));
+  bathFront.add(box(MAT.groove, x0 + 0.04, x1 - 0.04, ac.y0 + 0.02, ac.y0 + 0.045, z - ac.d - 0.002, z - ac.d + 0.02, { cast: false }));
+  bathFront.add(box(new THREE.MeshStandardMaterial({ color: 0xe8c33a, roughness: 0.6 }), x1 - 0.17, x1 - 0.06, ac.y0 + 0.1, ac.y0 + 0.22, z - ac.d - 0.003, z - ac.d, { cast: false }));   // ฉลากประหยัดไฟ
+}
+const bathSide = new THREE.Group();
+bathSide.add(wallZ(B.z0, BALCONY_Z1, B.x1, -1, [{ a0: B.doorZ0, a1: B.doorZ1, h: B.doorH }]));
+{ // ประตูห้องน้ำบานขาว เปิดเข้าด้านใน (บานพับฝั่ง doorZ0) + วงกบขาว + สวิตช์ไฟห้องน้ำ
+  const x = B.x1, w = B.doorZ1 - B.doorZ0, ix = B.x1 - T;
+  for (const [z0, z1] of [[B.doorZ0 - 0.05, B.doorZ0], [B.doorZ1, B.doorZ1 + 0.05]]) bathSide.add(box(MAT.frame, x, x + 0.015, 0, B.doorH + 0.05, z0, z1));
+  bathSide.add(box(MAT.frame, x, x + 0.015, B.doorH, B.doorH + 0.05, B.doorZ0 - 0.05, B.doorZ1 + 0.05));
+  bathSide.add(box(MAT.door, ix - w + 0.01, ix - 0.005, 0.01, B.doorH - 0.01, B.doorZ0 + 0.008, B.doorZ0 + 0.045));
+  bathSide.add(box(MAT.metal, ix - w + 0.06, ix - w + 0.12, 1.0, 1.03, B.doorZ0 - 0.05, B.doorZ0 + 0.1));
+  bathSide.add(box(MAT.white, x, x + 0.012, 1.22, 1.3, B.doorZ1 + 0.09, B.doorZ1 + 0.17));
+}
+const bathBack = wallX(-T, B.x1, B.z1, 1);
+
+scene.add(wallFront, wallRight, wallLeft, wallBalc, bathFront, bathSide, bathBack);
+
+// ผนังที่โปร่งใสอัตโนมัติเมื่อกล้องอยู่ด้านนอกฝั่งนั้น
+const CUTAWAY = [
+  { group: wallFront, outside: (c) => c.z < 0 },
+  { group: wallRight, outside: (c) => c.x < 0 },
+  { group: wallLeft,  outside: (c) => c.x > W },
+  { group: wallBalc,  outside: (c) => c.z > D },
+  { group: bathBack,  outside: (c) => c.z > BALCONY_Z1 },
+];
+
+// =====================================================================
+// พื้น / เพดาน / ห้องน้ำ / ระเบียง
+// =====================================================================
+scene.add(box(MAT.slab, -T, W + T, -0.2, -0.005, -T, BALCONY_Z1));
+
+// ห้องหลัก + ซุ้มประตูระเบียง (รูปตัว L) → Shape บนระนาบ XZ
+const ROOM_OUTLINE = [[0, 0], [W, 0], [W, D], [B.x1, D], [B.x1, B.z0], [0, B.z0]];
+function outlineGeometry(flipZ) {
+  const sh = new THREE.Shape(ROOM_OUTLINE.map(([x, z]) => new THREE.Vector2(x, flipZ ? -z : z)));
+  return new THREE.ShapeGeometry(sh).rotateX(flipZ ? -Math.PI / 2 : Math.PI / 2);
+}
+const floor = new THREE.Mesh(outlineGeometry(true), MAT.floor);   // UV = เมตร
+floor.receiveShadow = true;
+scene.add(floor);
+
+const ceiling = new THREE.Group();
+{
+  const plane = new THREE.Mesh(outlineGeometry(false), MAT.ceiling);  // หันหน้าลง — มองจากบนถูก cull
+  plane.position.y = H;
+  plane.castShadow = true;
+  ceiling.add(plane);
+  for (const [x, z] of DOWNLIGHTS) {                                 // โคมซาลาเปา LED (แผ่นหันลง — มองจากบนไม่เห็น)
+    const lamp = new THREE.Mesh(new THREE.CircleGeometry(0.19, 40), MAT.white);
+    lamp.rotation.x = Math.PI / 2;
+    lamp.position.set(x, H - 0.003, z);
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.165, 40), MAT.downlight);
+    glow.rotation.x = Math.PI / 2;
+    glow.position.set(x, H - 0.006, z);
+    ceiling.add(lamp, glow);
+  }
+  const bx = B.x1 - T, bz0 = B.z0 + T, bz1 = B.z1;
+  const bc = new THREE.Mesh(new THREE.PlaneGeometry(bx, bz1 - bz0), MAT.ceiling);   // ฝ้าห้องน้ำ
+  bc.rotation.x = Math.PI / 2;
+  bc.position.set(bx / 2, 2.45, (bz0 + bz1) / 2);
+  ceiling.add(bc);
+  { // ฝ้าทีบาร์ 60×60 + ดาวน์ไลท์เหลี่ยมในห้องน้ำ (หันลง — มองจากบนไม่เห็น)
+    const gm = new THREE.MeshStandardMaterial({ color: 0xc9cccd, roughness: 0.6 });
+    const strip = (w, d, x, z) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), gm);
+      m.rotation.x = Math.PI / 2;
+      m.position.set(x, 2.448, z);
+      ceiling.add(m);
+    };
+    for (let x = 0.6; x < bx - 0.05; x += 0.6) strip(0.025, bz1 - bz0, x, (bz0 + bz1) / 2);
+    for (let z = bz0 + 0.6; z < bz1 - 0.05; z += 0.6) strip(bx, 0.025, bx / 2, z);
+    const dl = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.14), MAT.downlight);
+    dl.rotation.x = Math.PI / 2;
+    dl.position.set(bx / 2, 2.447, (bz0 + bz1) / 2 - 0.2);
+    ceiling.add(dl);
+  }
+  scene.add(ceiling);
+}
+
+{ // ห้องน้ำภายใน (จากวิดีโอ): ผนังกระเบื้องขาวเงา 60×30 ถึงฝ้า · พื้นกระเบื้องเบจ 30×30 · โซนอาบน้ำโมเสกเทาเข้ม
+  // เข้าประตูหันไปผนัง X=0: อ่างแขวนผนัง + กระจก (ขวา) → ชักโครก (ตรงหน้า) → ม่านกั้น + โซนอาบน้ำ (ซ้าย: เครื่องทำน้ำอุ่น + ราวฝักบัว)
+  const ix = B.x1 - T, z0 = B.z0 + T, z1 = B.z1, showerZ = D - 0.02, CEIL = 2.45;
+
+  const bf = new THREE.Mesh(new THREE.PlaneGeometry(ix, z1 - z0),
+    new THREE.MeshStandardMaterial({ map: tileTexture(ix, z1 - z0, '#dccaa9', '#c2b090'), roughness: 0.4 }));
+  bf.rotation.x = -Math.PI / 2;
+  bf.position.set(ix / 2, 0.003, (z0 + z1) / 2);
+  bf.receiveShadow = true;
+  scene.add(bf);
+  scene.add(box(MAT.porcelain, 0, ix, 0, 0.035, showerZ - 0.03, showerZ + 0.01));            // ขอบกั้นน้ำโซนอาบน้ำ
+  scene.add(box(MAT.metal, 0.62, 0.74, 0.003, 0.006, z1 - 0.42, z1 - 0.3, { cast: false })); // ท่อระบายน้ำ
+
+  // --- กระเบื้องผนัง ---
+  const WT = {
+    white: { m: 0.6, rough: 0.12, tex: canvasTexture(512, (g, S) => {
+      g.fillStyle = '#f4f4f1'; g.fillRect(0, 0, S, S);
+      g.fillStyle = '#dcdad4';
+      g.fillRect(0, 0, S, 3); g.fillRect(0, S / 2, S, 3); g.fillRect(0, 0, 3, S);
+    }, 1, 1) },
+    mosaic: { m: 0.3, rough: 0.3, tex: canvasTexture(256, (g, S) => {
+      const r = rand(9), n = 12, c = S / n;
+      g.fillStyle = '#1f2124'; g.fillRect(0, 0, S, S);
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        g.fillStyle = `hsl(210, 4%, ${22 + r() * 16}%)`;
+        g.fillRect(i * c + 1, j * c + 1, c - 2, c - 2);
+      }
+    }, 1, 1) },
+  };
+  const tileMat = (kind, w, h) => {
+    const t = WT[kind].tex.clone();
+    t.needsUpdate = true;
+    t.repeat.set(w / WT[kind].m, h / WT[kind].m);
+    return new THREE.MeshStandardMaterial({ map: t, roughness: WT[kind].rough, envMap, envMapIntensity: 0.5 });
+  };
+  const subtract = (r, h) => {                             // ตัดช่องเปิดออกจากสี่เหลี่ยม [a0, a1, v0, v1]
+    if (h[0] >= r[1] || h[1] <= r[0] || h[2] >= r[3] || h[3] <= r[2]) return [r];
+    const out = [], a0 = Math.max(r[0], h[0]), a1 = Math.min(r[1], h[1]);
+    if (h[0] > r[0]) out.push([r[0], h[0], r[2], r[3]]);
+    if (h[1] < r[1]) out.push([h[1], r[1], r[2], r[3]]);
+    if (h[2] > r[2]) out.push([a0, a1, r[2], h[2]]);
+    if (h[3] < r[3]) out.push([a0, a1, h[3], r[3]]);
+    return out;
+  };
+  // axis 'x' = ระนาบ x = pos ทอดตาม z · axis 'z' = ระนาบ z = pos ทอดตาม x · n = ทิศที่กระเบื้องหันไป
+  function clad(axis, pos, n, a0, a1, kind, holes = []) {
+    let rects = [[a0, a1, 0, CEIL]];
+    for (const h of holes) rects = rects.flatMap((r) => subtract(r, [h.a0, h.a1, h.v0, h.v1]));
+    for (const [u0, u1, w0, w1] of rects) {
+      if (u1 - u0 < 0.005 || w1 - w0 < 0.005) continue;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, w1 - w0), tileMat(kind, u1 - u0, w1 - w0));
+      const mid = (u0 + u1) / 2, off = pos + n * 0.004;
+      if (axis === 'x') { m.position.set(off, (w0 + w1) / 2, mid); m.rotation.y = n > 0 ? Math.PI / 2 : -Math.PI / 2; }
+      else { m.position.set(mid, (w0 + w1) / 2, off); m.rotation.y = n > 0 ? 0 : Math.PI; }
+      m.receiveShadow = true;
+      scene.add(m);
+    }
+  }
+  clad('x', 0, 1, z0, showerZ, 'white');
+  clad('x', 0, 1, showerZ, z1, 'mosaic');
+  clad('x', ix, -1, z0, showerZ, 'white', [{ a0: B.doorZ0, a1: B.doorZ1, v0: 0, v1: B.doorH }]);
+  clad('x', ix, -1, showerZ, z1, 'white');
+  clad('z', z0, 1, 0, ix, 'white');
+  clad('z', z1, -1, 0, ix, 'mosaic');
+
+  // --- อ่างล้างหน้าแขวนผนัง + ก๊อก + กระจกไร้กรอบ ---
+  const sz = z0 + 0.32;
+  scene.add(box(MAT.porcelain, 0, 0.44, 0.74, 0.84, sz - 0.24, sz + 0.24));
+  scene.add(box(new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: 0.15 }), 0.08, 0.38, 0.838, 0.842, sz - 0.18, sz + 0.18, { cast: false }));
+  scene.add(box(MAT.metal, 0.03, 0.06, 0.84, 0.98, sz - 0.015, sz + 0.015));
+  scene.add(box(MAT.metal, 0.03, 0.15, 0.96, 0.98, sz - 0.012, sz + 0.012));
+  const trap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.36, 12), MAT.metal);
+  trap.position.set(0.15, 0.56, sz);
+  scene.add(trap);
+  scene.add(box(MAT.mirror, 0.004, 0.01, 1.1, 1.9, sz - 0.3, sz + 0.3));
+  scene.add(box(MAT.metal, 0, 0.09, 0.9, 0.95, sz + 0.25, sz + 0.31));                    // ที่ใส่กระดาษ
+
+  // --- ชักโครกแบบชิ้นเดียว (หันออกจากผนัง X=0) ---
+  const tz = z0 + 0.82;
+  scene.add(box(MAT.porcelain, 0.02, 0.2, 0.4, 0.74, tz - 0.19, tz + 0.19));              // ถังพักน้ำ
+  scene.add(box(MAT.porcelain, 0.01, 0.21, 0.74, 0.76, tz - 0.2, tz + 0.2));
+  scene.add(box(MAT.metal, 0.1, 0.13, 0.76, 0.77, tz - 0.03, tz + 0.03, { cast: false }));
+  const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.3, 32), MAT.porcelain);
+  pedestal.scale.set(1.35, 1, 1);
+  pedestal.position.set(0.33, 0.15, tz);
+  const tBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.13, 0.12, 32), MAT.porcelain);
+  tBowl.scale.set(1.3, 1, 1);
+  tBowl.position.set(0.4, 0.34, tz);
+  const seat = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.022, 10, 32), MAT.porcelain);
+  seat.rotation.x = Math.PI / 2;
+  seat.scale.set(1.3, 1, 1);
+  seat.position.set(0.42, 0.415, tz);
+  for (const m of [pedestal, tBowl, seat]) { m.castShadow = m.receiveShadow = true; scene.add(m); }
+  scene.add(box(MAT.porcelain, 0.2, 0.225, 0.43, 0.84, tz - 0.17, tz + 0.17));            // ฝาเปิดพิงถัง
+  scene.add(box(MAT.metal, 0, 0.03, 0.5, 0.56, tz + 0.23, tz + 0.27));                    // สายฉีดชำระ
+
+  // --- โซนอาบน้ำ: เครื่องทำน้ำอุ่นบนผนังโมเสก + ราวฝักบัว + ม่านกั้นลายเทา ---
+  const hz = showerZ + 0.45;
+  scene.add(box(MAT.porcelain, 0, 0.09, 1.45, 1.83, hz - 0.12, hz + 0.12));
+  const dial = new THREE.Mesh(new THREE.CircleGeometry(0.035, 24), new THREE.MeshStandardMaterial({ color: 0x8c9196, roughness: 0.4 }));
+  dial.rotation.y = Math.PI / 2;
+  dial.position.set(0.092, 1.6, hz);
+  scene.add(dial);
+  scene.add(box(MAT.metal, 0.005, 0.025, 0.95, 1.85, hz + 0.3, hz + 0.32));               // ราวฝักบัว
+  scene.add(box(MAT.metal, 0.02, 0.09, 1.78, 1.82, hz + 0.27, hz + 0.35));                // ฝักบัว
+  scene.add(box(MAT.metal, 0.03, 0.04, 1.05, 1.45, hz + 0.1, hz + 0.11));                 // สายฝักบัว
+  scene.add(box(MAT.metal, 0, 0.05, 1.05, 1.09, hz - 0.02, hz + 0.02));                   // วาล์ว
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, ix, 12), MAT.metal);
+  rod.rotation.z = Math.PI / 2;
+  rod.position.set(ix / 2, 2.2, showerZ);
+  scene.add(rod);
+  const sc = canvasTexture(256, (g, S) => {
+    g.fillStyle = '#f3f3f0'; g.fillRect(0, 0, S, S);
+    const r = rand(41);
+    for (let i = 0; i < 160; i++) {
+      g.fillStyle = `rgba(110, 115, 120, ${0.15 + r() * 0.3})`;
+      g.beginPath();
+      g.ellipse(r() * S, r() * S, 2 + r() * 5, 1 + r() * 3, r() * 3, 0, Math.PI * 2);
+      g.fill();
+    }
+  }, 1, 1);
+  const cw = 0.5, ch = 1.95;                                   // รูดไปชิดฝั่งประตู เห็นโซนอาบน้ำ
+  const cgeo = new THREE.PlaneGeometry(cw, ch, 60, 1);
+  const cp = cgeo.attributes.position;
+  for (let i = 0; i < cp.count; i++) cp.setZ(i, Math.sin((cp.getX(i) / 0.06) * Math.PI) * 0.04);
+  cgeo.computeVertexNormals();
+  sc.repeat.set(cw / 0.5, ch / 0.5);
+  const sCurtain = new THREE.Mesh(cgeo, new THREE.MeshStandardMaterial({ map: sc, roughness: 0.8, side: THREE.DoubleSide }));
+  sCurtain.position.set(ix - 0.03 - cw / 2, 0.22 + ch / 2, showerZ);
+  sCurtain.castShadow = sCurtain.receiveShadow = true;
+  scene.add(sCurtain);
+}
+
+{ // ระเบียง X bath.x1–W (จากวิดีโอ): พื้นกระเบื้องเทาเงา · ขอบปูนเตี้ย + ราวเหล็กซี่ตั้งสีดำ · ราวตากผ้าใต้ฝ้า
+  // ผนังข้างฝั่งห้องน้ำมีประตูไม้สีน้ำตาล (ลูกบิด + เกล็ดระบายอากาศด้านบน) — ไม่แน่ใจว่าเปิดไปไหน (ช่องท่อ?)
+  const x0 = B.x1, x1 = W, z0 = D + T, z1 = BALCONY_Z1, fy = -0.03, cx = (x0 + x1) / 2;
+  const floorTex = canvasTexture(512, (g, S) => {
+    const r = rand(21);
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+      g.fillStyle = `hsl(215, 6%, ${58 + r() * 5}%)`;
+      g.fillRect(i * S / 2, j * S / 2, S / 2, S / 2);
+    }
+    g.fillStyle = '#7d8287';
+    for (const p of [0, S / 2]) { g.fillRect(p, 0, 3, S); g.fillRect(0, p, S, 3); }
+  }, (x1 - x0) / 0.6, (z1 - z0) / 0.6);
+  scene.add(box(MAT.slab, x0, x1, -0.2, fy - 0.005, z0, z1));
+  const bf = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.18, envMap, envMapIntensity: 0.4 }));
+  bf.rotation.x = -Math.PI / 2;
+  bf.position.set(cx, fy, (z0 + z1) / 2);
+  bf.receiveShadow = true;
+  scene.add(bf);
+  scene.add(box(MAT.metal, x1 - 0.3, x1 - 0.18, fy, fy + 0.003, z1 - 0.32, z1 - 0.2, { cast: false }));   // ท่อระบายน้ำ
+  scene.add(box(MAT.frame, F.slider.x0, F.slider.x1, fy, 0.0, D, z0 + 0.03));                            // รางประตูบานเลื่อน
+
+  // ขอบปูนเตี้ย + ราวเหล็กซี่ตั้ง (ราวบน 1.10)
+  const curbH = 0.12, rz = z1 - 0.06;
+  scene.add(box(MAT.wall, x0, x1, fy, curbH, z1 - 0.12, z1));
+  const iron = new THREE.MeshStandardMaterial({ color: 0x26282b, roughness: 0.45, metalness: 0.5 });
+  scene.add(box(iron, x0, x1, 1.06, 1.1, rz - 0.025, rz + 0.025));
+  scene.add(box(iron, x0, x1, 0.94, 0.96, rz - 0.012, rz + 0.012));
+  scene.add(box(iron, x0, x1, curbH, curbH + 0.03, rz - 0.015, rz + 0.015));
+  for (let x = x0 + 0.06; x < x1 - 0.03; x += 0.1) scene.add(box(iron, x - 0.008, x + 0.008, curbH + 0.03, 1.06, rz - 0.008, rz + 0.008));
+
+  // ใต้ท้องพื้นชั้นบน (หันลง) + คานขอบนอก
+  const soffit = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), MAT.ceiling);
+  soffit.rotation.x = Math.PI / 2;
+  soffit.position.set(cx, H, (z0 + z1) / 2);
+  ceiling.add(soffit);
+  const beam = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, 0.3), MAT.wall);
+  beam.rotation.y = Math.PI;
+  beam.position.set(cx, H - 0.15, z1 - 0.12);
+  ceiling.add(beam);
+
+  // ประตูไม้สีน้ำตาลบนผนังข้างฝั่งห้องน้ำ (หันเข้าระเบียง)
+  const brown = new THREE.MeshStandardMaterial({ color: 0x6b4a3a, roughness: 0.6 });
+  const dz0 = z0 + 0.1, dz1 = z0 + 0.78;
+  scene.add(box(brown, x0, x0 + 0.035, fy, 2.0, dz0, dz1));
+  scene.add(box(MAT.doorFrame, x0, x0 + 0.045, 2.0, 2.04, dz0 - 0.03, dz1 + 0.03));
+  for (const [a, b] of [[dz0 - 0.03, dz0], [dz1, dz1 + 0.03]]) scene.add(box(MAT.doorFrame, x0, x0 + 0.045, fy, 2.04, a, b));
+  scene.add(box(new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.3, metalness: 0.7 }), x0 + 0.035, x0 + 0.08, 1.0, 1.04, dz1 - 0.09, dz1 - 0.05));
+  scene.add(box(brown, x0, x0 + 0.03, 2.08, 2.45, dz0, dz1));                                           // เกล็ดระบายอากาศ
+  for (let y = 2.12; y < 2.43; y += 0.05) scene.add(box(MAT.doorFrame, x0 + 0.03, x0 + 0.04, y, y + 0.015, dz0 + 0.03, dz1 - 0.03, { cast: false }));
+
+  // ราวตากผ้าสแตนเลส 2 เส้นคาดใต้ฝ้า
+  for (const z of [z0 + 0.3, z1 - 0.3]) {
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, x1 - x0, 12), MAT.metal);
+    r.rotation.z = Math.PI / 2;
+    r.position.set(cx, 2.32, z);
+    r.castShadow = true;
+    scene.add(r);
+    for (const x of [x0 + 0.02, x1 - 0.02]) scene.add(box(MAT.metal, x - 0.02, x + 0.02, 2.3, H, z - 0.015, z + 0.015));
+  }
+}
+// ---------- ม่าน (เปิด = รวบฝั่งเสา/โต๊ะ, ปิด = เต็มประตูกระจก) ----------
+const curtain = new THREE.Group();
+scene.add(curtain);
+// ผ้าม่านทึบสีเทาเข้ม (ตามวิดีโอ) — ทำจากผืนเดียวที่ดัดเป็นลอน ไม่ใช่กล่องเรียงกัน
+const CURTAIN_TEX = canvasTexture(512, (g, S) => {           // 1 แผ่น = 0.6 × 0.6 ม.
+  g.fillStyle = '#3d3e43'; g.fillRect(0, 0, S, S);
+  const r = rand(17);
+  for (let k = 0; k < 14; k++) {                            // ลายเส้นคลื่นบาง ๆ ในเนื้อผ้า (เห็นชัดเฉพาะตอนต้องแสง)
+    const x0 = (k + r() * 0.6) * (S / 14), amp = 3 + r() * 5, ph = r() * 6.28;
+    for (const [c, w, dx] of [['rgba(255, 248, 236, 0.28)', 1.2, 0], ['rgba(140, 110, 80, 0.10)', 1, 2]]) {
+      g.strokeStyle = c; g.lineWidth = w;
+      g.beginPath();
+      for (let y = 0; y <= S; y += 8) g.lineTo(x0 + dx + Math.sin((y / S) * Math.PI * 4 + ph) * amp, y);
+      g.stroke();
+    }
+  }
+}, 1, 1);
+const CURTAIN_MAT = new THREE.MeshPhysicalMaterial({
+  map: CURTAIN_TEX, roughness: 0.5, side: THREE.DoubleSide,
+  sheen: 0.6, sheenColor: new THREE.Color(0x9a9ca4), sheenRoughness: 0.45,
+});
+const CURTAIN_HEAD = new THREE.MeshStandardMaterial({ color: 0x34353a, roughness: 0.7 });
+const CURTAIN_TRACK = new THREE.MeshStandardMaterial({ color: 0x1b1b1d, roughness: 0.4, metalness: 0.4 });
+function curtainPanel(x0, x1, top, z, gather) {
+  const w = x1 - x0, h = top - 0.02, period = 0.15 / gather, amp = 0.022 * Math.sqrt(gather);
+  const geo = new THREE.PlaneGeometry(w, h, Math.ceil(w / 0.008), 30);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + w / 2, t = (h / 2 - p.getY(i)) / h;          // t: 0 = บน, 1 = ชายล่าง
+    const ph = (x / period) * Math.PI * 2;
+    const pinch = Math.pow(Math.abs(Math.sin(ph / 2)), 0.6) * 2 - 1;   // ลอนจีบแหลมด้านบน → คลายเป็นลอนนุ่มด้านล่าง
+    const wave = pinch * (1 - t) + Math.sin(ph) * t;
+    p.setZ(i, wave * amp * (0.55 + 0.7 * t) + Math.sin(ph * 0.31 + t * 2.4) * 0.008 * t);
+    p.setX(i, p.getX(i) * (1 - 0.04 * t * (gather - 1) / gather));    // ชายล่างสอบเข้าเล็กน้อยตอนรวบ
+  }
+  geo.computeVertexNormals();
+  CURTAIN_TEX.repeat.set((w * gather) / 0.6 / 1.1, h / 0.6);            // ลายผ้าคงขนาดเมื่อรวบ/คลี่
+  const m = new THREE.Mesh(geo, CURTAIN_MAT);
+  m.position.set(x0 + w / 2, 0.02 + h / 2, z);
+  m.castShadow = m.receiveShadow = true;
+  curtain.add(m);
+  for (let x = x0 + period * 0.5; x < x1 - 0.01; x += period) {      // หัวจีบ 3 ทบ + ตะขอ ทุกลอน
+    curtain.add(box(CURTAIN_HEAD, x - 0.012, x + 0.012, top - 0.12, top - 0.02, z - 0.025, z + 0.02));
+    curtain.add(box(MAT.metal, x - 0.004, x + 0.004, top - 0.02, top + 0.02, z - 0.004, z + 0.004, { cast: false }));
+  }
+  curtain.add(box(CURTAIN_HEAD, x0, x1, top - 0.1, top - 0.02, z - 0.012, z + 0.006, { cast: false }));   // ผ้าเทปหัวม่าน
+}
+// amount: 0 = เปิด (รวบฝั่งเสา) · 1 = ปิด (คลี่เต็มประตูกระจก) · ค่าระหว่างกลาง = กำลังรูด
+function buildCurtain(amount) {
+  if (typeof invalidate === 'function') invalidate({ shadows: true });
+  curtain.traverse((o) => o.geometry?.dispose());
+  curtain.clear();
+  const x0 = F.slider.x0 - 0.08, x1 = F.pillar.x0 - 0.02, z = D - 0.1, top = F.slider.h + 0.15;
+  curtain.add(box(CURTAIN_TRACK, x0 - 0.03, x1 + 0.03, top + 0.02, top + 0.05, z - 0.03, z + 0.03));      // รางม่านอลูมิเนียมขาว
+  for (const x of [x0, x1]) curtain.add(box(CURTAIN_TRACK, x - 0.02, x + 0.02, top + 0.05, top + 0.09, z - 0.02, D));   // ขายึดผนัง
+  const a = Math.max(0, Math.min(1, Number(amount))), full = x1 - x0, w = 0.42 + (full - 0.42) * a;
+  curtainPanel(x1 - w, x1, top, z, (full * 1.1) / w);
+  curtain.userData.amount = a;
+}
+// รูดม่านแบบนุ่ม ๆ — loop เรียก stepCurtain ทุกเฟรม
+let curtainTarget = 0;
+function setCurtain(closed) {
+  curtainTarget = closed ? 1 : 0;
+  const cb = document.getElementById('tCurtain');
+  if (cb) cb.checked = closed;
+  invalidate();
+}
+function stepCurtain(dt) {
+  const a = curtain.userData.amount ?? 0;
+  if (Math.abs(a - curtainTarget) < 1e-3) return;
+  const next = a + Math.sign(curtainTarget - a) * Math.min(Math.abs(curtainTarget - a), dt * 1.4);
+  buildCurtain(next);
+}
+buildCurtain(false);
+
+{ // เส้นรัศมีประตูทางเข้า (บานพับฝั่ง X = entry.x1 ชิดมุม)
+  const hx = F.entry.x1, r = F.entry.x1 - F.entry.x0, pts = [];
+  for (let i = 0; i <= 32; i++) {
+    const a = (i / 32) * Math.PI / 2;
+    pts.push(new V(hx - r * Math.cos(a), 0.004, r * Math.sin(a)));
+  }
+  pts.push(new V(hx, 0.004, 0));
+  // รัศมีประตูห้องน้ำ (เปิดเข้าด้านใน บานพับฝั่ง doorZ0)
+  const bpts = [], br = B.doorZ1 - B.doorZ0, bx = B.x1 - T;
+  for (let i = 0; i <= 32; i++) {
+    const a = (i / 32) * Math.PI / 2;
+    bpts.push(new V(bx - br * Math.sin(a), 0.008, B.doorZ0 + br * Math.cos(a)));
+  }
+  bpts.push(new V(bx, 0.008, B.doorZ0));
+  for (const p of [pts, bpts]) {
+    const arc = new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),
+      new THREE.LineDashedMaterial({ color: 0x7d858c, dashSize: 0.05, gapSize: 0.035 }));
+    arc.computeLineDistances();
+    scene.add(arc);
+  }
+}
+
+// ---------- ป้ายชื่อ (มุม 3D) ----------
+const fixedLabels = [];
+const addLabel = (text, x, y, z) => {
+  const el = document.createElement('div');
+  el.className = 'tag';
+  el.textContent = text;
+  const o = new CSS2DObject(el);
+  o.position.set(x, y, z);
+  scene.add(o);
+  fixedLabels.push(o);
+};
+addLabel('ประตูทางเข้า', (F.entry.x0 + F.entry.x1) / 2, 2.3, 0);
+addLabel('ห้องน้ำ', (B.x1 - T) / 2, 1.5, (B.z0 + B.z1) / 2 + 0.3);
+addLabel('แอร์', F.ac.cx, 2.05, B.z0 - 0.15);
+addLabel('ระเบียง', (B.x1 + W) / 2, 0.3, (D + BALCONY_Z1) / 2);
+
+// ---------- กริด ----------
+const grid = new THREE.Group();
+{
+  const minor = [], major = [];
+  for (let i = 0; i <= Math.round(W / 0.5); i++) { const x = i * 0.5; (i % 2 ? minor : major).push(x, 0.006, 0, x, 0.006, D); }
+  for (let i = 0; i <= Math.round(D / 0.5); i++) { const z = i * 0.5; (i % 2 ? minor : major).push(0, 0.006, z, W, 0.006, z); }
+  const lines = (arr, opacity) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x2c3136, transparent: true, opacity }));
+  };
+  grid.add(lines(minor, 0.14), lines(major, 0.32));
+  grid.visible = false;
+  scene.add(grid);
+}
+
+// =====================================================================
+// เส้นบอกขนาด (มุมบน + PNG) — วาดที่ความสูงเหนือผนัง
+// =====================================================================
+const DIM_Y = 2.75;
+const PLAN = { x0: -1.0, x1: W + 1.0, z0: -1.0, z1: BALCONY_Z1 + 0.55 };   // ขอบเขตแปลนรวมเส้นบอกขนาด
+const dims = new THREE.Group();
+dims.visible = false;
+scene.add(dims);
+
+function dimLine(axis, a0, a1, at, label) {
+  const P = (a, off = 0) => axis === 'x' ? new V(a, DIM_Y, at + off) : new V(at + off, DIM_Y, a);
+  const pts = [P(a0), P(a1)];
+  for (const a of [a0, a1]) {
+    const q = 0.055;
+    pts.push(axis === 'x' ? new V(a - q, DIM_Y, at - q) : new V(at - q, DIM_Y, a - q),
+             axis === 'x' ? new V(a + q, DIM_Y, at + q) : new V(at + q, DIM_Y, a + q));   // ขีดเฉียง 45°
+    pts.push(P(a, -0.09), P(a, 0.09));                                                    // ขีดตั้งฉาก
+  }
+  dims.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: 0x3a4046 })));
+  const len = Math.abs(a1 - a0);
+  if (label && len >= 0.35) {
+    const t = textPlane(label, { size: 0.26, maxW: len - 0.12 });
+    t.position.copy(P((a0 + a1) / 2));
+    t.position.y += 0.01;
+    if (axis === 'z') t.rotation.y = Math.PI / 2;   // อ่านจากล่างขึ้นบน
+    dims.add(t);
+  }
+}
+function buildDims() {
+  disposeGroup(dims);
+  const m = (v) => v.toFixed(2);
+  // ผนังทางเข้า (ล่างจอ)
+  dimLine('x', 0, F.entry.x0, -0.35, m(F.entry.x0));
+  dimLine('x', F.entry.x0, F.entry.x1, -0.35, `ประตู ${m(F.entry.x1 - F.entry.x0)}`);
+  dimLine('x', F.entry.x1, W, -0.35);
+  dimLine('x', 0, W, -0.75, `กว้าง ${m(W)} ม.`);
+  // ผนังขวา X=0 (ขวาจอ)
+  dimLine('z', 0, B.z0, -0.35, `ห้อง ${m(B.z0)}`);
+  dimLine('z', B.z0, BALCONY_Z1, -0.35, `ห้องน้ำ ${m(BALCONY_Z1 - B.z0)}`);
+  dimLine('z', 0, BALCONY_Z1, -0.75, `ลึกรวม ${m(BALCONY_Z1)} ม.`);
+  // ผนังซ้าย X=W (ซ้ายจอ)
+  dimLine('z', 0, F.pillar.z0, W + 0.35, `ผนังโต๊ะ ${m(F.pillar.z0)}`);
+  dimLine('z', F.pillar.z0, D, W + 0.35, 'เสา');
+  dimLine('z', D, BALCONY_Z1, W + 0.35, `ระเบียง ${m(BALCONY_Z1 - D)}`);
+  dimLine('z', 0, D, W + 0.75, `ถึงประตูระเบียง ${m(D)}`);
+  // ด้านนอกอาคาร (บนจอ)
+  const zb = BALCONY_Z1 + 0.3;
+  dimLine('x', 0, B.x1, zb, `ห้องน้ำ ${m(B.x1)}`);
+  dimLine('x', B.x1, W, zb, `ระเบียง ${m(W - B.x1)}`);
+}
+
+// =====================================================================
+// เฟอร์นิเจอร์: รูปทรง (พิกัดภายใน: กึ่งกลางฐาน = 0,0,0 · ด้านหน้า = -Z)
+// =====================================================================
+const mat = (color, roughness = 0.8, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
+const lighter = (hex, l) => new THREE.Color(hex).offsetHSL(0, 0, l);
+
+const BUILD = {
+  bed(f) {
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2;
+    const frame = mat(f.color, 0.7), sheet = mat('#f7f5f0', 0.95), blanket = mat('#b7c3cc', 0.95), pillow = mat('#ffffff', 0.95);
+    const mw = f.w - 0.08, ml = Math.min(1.98, f.d - 0.1), mz1 = hd - 0.09, mz0 = mz1 - ml;
+    g.add(box(mat('#3b3530'), -hw + 0.05, hw - 0.05, 0, 0.06, -hd + 0.05, hd - 0.1));      // ฐานเว้า
+    g.add(box(frame, -hw, hw, 0.06, 0.30, -hd, hd - 0.08));                                 // โครง
+    g.add(box(frame, -hw, hw, 0, f.h, hd - 0.08, hd));                                      // หัวเตียง
+    g.add(box(sheet, -mw / 2, mw / 2, 0.30, 0.52, mz0, mz1));                               // ที่นอน
+    g.add(box(blanket, -mw / 2 - 0.01, mw / 2 + 0.01, 0.36, 0.535, mz0 - 0.01, mz1 - ml * 0.35));
+    for (const s of [-1, 1]) g.add(box(pillow, s * mw / 4 - 0.3, s * mw / 4 + 0.3, 0.52, 0.64, mz1 - 0.42, mz1 - 0.04));
+    return g;
+  },
+  desk(f) {
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, top = mat(f.color, 0.6), leg = mat('#2f3337', 0.5, 0.3);
+    g.add(box(top, -hw, hw, f.h - 0.03, f.h, -hd, hd));
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = sx * (hw - 0.05), z = sz * (hd - 0.05);
+      g.add(box(leg, x - 0.02, x + 0.02, 0, f.h - 0.03, z - 0.02, z + 0.02));
+    }
+    g.add(box(leg, -hw + 0.07, hw - 0.07, f.h - 0.35, f.h - 0.05, hd - 0.06, hd - 0.045));   // แผงหลัง
+    return g;
+  },
+  chair(f) {
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, seatY = 0.46;
+    const fabric = mat(f.color, 0.9), leg = mat('#b9bdc1', 0.35, 0.4);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = sx * (hw - 0.06), z = sz * (hd - 0.06);
+      g.add(box(leg, x - 0.013, x + 0.013, 0, seatY - 0.05, z - 0.013, z + 0.013));
+    }
+    g.add(box(fabric, -hw + 0.02, hw - 0.02, seatY - 0.06, seatY, -hd + 0.02, hd - 0.05));   // เบาะ
+    g.add(box(fabric, -hw + 0.04, hw - 0.04, seatY + 0.1, f.h, hd - 0.07, hd - 0.02));        // พนักพิง
+    for (const sx of [-1, 1]) g.add(box(leg, sx * (hw - 0.08) - 0.012, sx * (hw - 0.08) + 0.012, seatY, seatY + 0.12, hd - 0.055, hd - 0.035));
+    return g;
+  },
+  wardrobe(f) {
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, body = mat(f.color, 0.6);
+    const groove = mat('#a9a399'), handle = mat('#8e9397', 0.3, 0.6);
+    g.add(box(mat('#3b3530'), -hw + 0.03, hw - 0.03, 0, 0.06, -hd + 0.04, hd));
+    g.add(box(body, -hw, hw, 0.06, f.h, -hd, hd));
+    g.add(box(groove, -0.003, 0.003, 0.08, f.h - 0.02, -hd - 0.002, -hd + 0.01, { cast: false }));
+    for (const s of [-1, 1]) g.add(box(handle, s * 0.05 - 0.01, s * 0.05 + 0.01, 0.9, 1.3, -hd - 0.035, -hd));
+    return g;
+  },
+  sofa(f) {
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, arm = 0.16, back = 0.22;
+    const fabric = mat(f.color, 0.95), cushion = mat(lighter(f.color, 0.06), 0.95), leg = mat('#2f2a26', 0.6);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = sx * (hw - 0.06), z = sz * (hd - 0.06);
+      g.add(box(leg, x - 0.02, x + 0.02, 0, 0.08, z - 0.02, z + 0.02));
+    }
+    g.add(box(fabric, -hw, hw, 0.08, 0.40, -hd, hd));                            // ฐาน
+    g.add(box(fabric, -hw, hw, 0.40, f.h, hd - back, hd));                        // พนักพิง
+    for (const s of [-1, 1]) g.add(box(fabric, s > 0 ? hw - arm : -hw, s > 0 ? hw : -hw + arm, 0.40, 0.62, -hd, hd - back));
+    const cw = (f.w - 2 * arm) / 2;
+    for (let i = 0; i < 2; i++) {
+      const x0 = -hw + arm + i * cw;
+      g.add(box(cushion, x0 + 0.005, x0 + cw - 0.005, 0.40, 0.50, -hd + 0.02, hd - back));
+    }
+    return g;
+  },
+  tv(f) {
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2;
+    const wood = mat(f.color, 0.6), groove = mat('#5b4634'), black = mat('#141516', 0.25);
+    const leg = mat('#2f2a26', 0.6), screen = new THREE.MeshStandardMaterial({ color: 0x0b0c0e, roughness: 0.12, metalness: 0.2 });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = sx * (hw - 0.05), z = sz * (hd - 0.05);
+      g.add(box(leg, x - 0.02, x + 0.02, 0, 0.08, z - 0.02, z + 0.02));
+    }
+    g.add(box(wood, -hw, hw, 0.08, 0.50, -hd, hd));                               // ตู้วาง
+    for (const s of [-1, 1]) g.add(box(groove, s * hw / 3 - 0.003, s * hw / 3 + 0.003, 0.1, 0.48, -hd - 0.002, -hd + 0.01, { cast: false }));
+    const sw = Math.min(1.12, f.w), y0 = f.h - 0.65;
+    g.add(box(black, -0.2, 0.2, 0.50, 0.515, -0.06, 0.1));                        // ขาตั้งจอ
+    g.add(box(black, -0.035, 0.035, 0.515, y0 + 0.1, 0.02, 0.06));
+    g.add(box(black, -sw / 2, sw / 2, y0, f.h, -0.005, 0.045));                    // จอ 50"
+    g.add(box(screen, -sw / 2 + 0.01, sw / 2 - 0.01, y0 + 0.01, f.h - 0.01, -0.008, -0.004, { cast: false }));
+    return g;
+  },
+  deskunit(f) {   // โต๊ะยาวไม้เข้ม: ฝั่ง -X = โต๊ะ + ลิ้นชักขาว 2 ช่อง · ฝั่ง +X = ตู้ทีวี (ช่องเหลือง + ลิ้นชัก) + ทีวี
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, split = hw - 0.95;
+    const wood = mat(f.color, 0.5), white = mat('#f3f1ec', 0.5), yellow = mat('#f2c230', 0.5), dark = mat('#141516', 0.3);
+    g.add(box(wood, -hw, hw, f.h - 0.03, f.h, -hd, hd));
+    g.add(box(wood, split, hw, 0, f.h - 0.03, -hd + 0.02, hd));
+    g.add(box(yellow, split + 0.03, hw - 0.03, 0.3, 0.56, -hd + 0.005, -hd + 0.025));
+    for (const k of [0, 1]) g.add(box(white, split + 0.03 + k * 0.45, split + 0.47 + k * 0.45, 0.04, 0.27, -hd + 0.005, -hd + 0.025));
+    g.add(box(wood, -hw, -hw + 0.03, 0, f.h - 0.03, -hd + 0.02, hd));
+    g.add(box(wood, -hw + 0.03, split, f.h - 0.4, f.h - 0.03, hd - 0.03, hd));
+    const dw = (split + hw - 0.12) / 2;
+    for (const k of [0, 1]) {
+      const x0 = -hw + 0.05 + k * (dw + 0.02);
+      g.add(box(white, x0, x0 + dw, f.h - 0.15, f.h - 0.03, -hd, -hd + 0.45));
+    }
+    const tx = (split + hw) / 2;
+    g.add(box(dark, tx - 0.15, tx + 0.15, f.h, f.h + 0.012, -0.05, 0.12));
+    g.add(box(dark, tx - 0.45, tx + 0.45, f.h + 0.06, f.h + 0.58, 0.03, 0.07));   // ทีวี ~40"
+    return g;
+  },
+  fridge(f) {
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2;
+    const body = mat(f.color, 0.25, 0.1), black = mat('#1d1e20', 0.4);
+    g.add(box(black, -hw + 0.02, hw - 0.02, 0, 0.05, -hd + 0.02, hd - 0.03));
+    g.add(box(black, -hw, hw, 0.05, f.h, -hd + 0.04, hd - 0.03));
+    g.add(box(body, -hw + 0.01, hw - 0.01, 0.06, f.h - 0.01, -hd, -hd + 0.04));   // บานหน้า
+    g.add(box(mat('#c4c8cc', 0.3, 0.6), hw - 0.07, hw - 0.05, f.h - 0.4, f.h - 0.1, -hd - 0.03, -hd));
+    return g;
+  },
+  rack(f) {       // ราวแขวนผ้าไม้
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, wd = mat(f.color, 0.7);
+    for (const s of [-1, 1]) {
+      const x = s * (hw - 0.02);
+      g.add(box(wd, x - 0.02, x + 0.02, 0, 0.03, -hd, hd));
+      g.add(box(wd, x - 0.02, x + 0.02, 0.03, f.h, -0.03, 0.03));
+    }
+    for (const [y, z] of [[f.h - 0.03, -0.12], [f.h - 0.03, 0.12], [0.55, -0.1], [0.55, 0.1]]) {
+      g.add(box(wd, -hw, hw, y - 0.015, y + 0.015, z - 0.015, z + 0.015));
+    }
+    return g;
+  },
+  box(f) {
+    const g = new THREE.Group();
+    g.add(box(mat(f.color), -f.w / 2, f.w / 2, 0, f.h, -f.d / 2, f.d / 2));
+    return g;
+  },
+  bed35(f) {      // เตียงเหล็กดำ หัว/ท้ายเตียงลายกิ่งไม้ + ที่นอนลายสปริงขาว (ยังไม่มีเครื่องนอน — ตามวิดีโอ)
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, t = 0.035;
+    const steel = mat(f.color, 0.45, 0.5), mattress = mat('#f1f1ec', 0.95), band = mat('#d9dbdc', 0.9);
+    const railY = 0.3;
+    const bar = (x0, y0, x1, y1, z) => {                 // ซี่เหล็กแนวเฉียงในระนาบหัว/ท้ายเตียง
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.02, 0.02), steel);
+      m.position.set((x0 + x1) / 2, (y0 + y1) / 2, z);
+      m.rotation.z = Math.atan2(y1 - y0, x1 - x0);
+      m.castShadow = true;
+      g.add(m);
+    };
+    const LATTICE = [[-1, 0.1, -0.35, 1], [-0.35, 1, 0.15, 0.35], [0.15, 0.35, 1, 0.85], [-0.75, 0.55, 0.3, 0.05], [0.3, 0.05, 0.65, 0.55],
+                     [0.65, 0.55, 0.15, 1], [-1, 0.75, -0.6, 0.35], [-0.2, 0.6, 0.45, 0.75]];
+    const panel = (z, top, s) => {                      // s = ฝั่ง (+1 หัว, -1 ท้าย)
+      for (const sx of [-1, 1]) g.add(box(steel, sx * (hw - t / 2) - t / 2, sx * (hw - t / 2) + t / 2, 0, top, z - t / 2, z + t / 2));
+      g.add(box(steel, -hw, hw, top - t, top, z - t / 2, z + t / 2));
+      g.add(box(steel, -hw, hw, railY, railY + t, z - t / 2, z + t / 2));
+      const y0 = railY + t, y1 = top - t, aw = hw - t;
+      for (const [a, b, c, d] of LATTICE) bar(a * aw * s, y0 + b * (y1 - y0), c * aw * s, y0 + d * (y1 - y0), z);
+    };
+    panel(hd - t / 2, f.h, 1);
+    panel(-hd + t / 2, 0.62, -1);
+    for (const sx of [-1, 1]) g.add(box(steel, sx * (hw - t / 2) - t / 2, sx * (hw - t / 2) + t / 2, railY - 0.08, railY, -hd, hd));   // โครงข้าง
+    g.add(box(steel, -0.015, 0.015, 0, railY - 0.08, -0.015, 0.015));                                                               // ขากลาง
+    g.add(box(mattress, -hw + 0.03, hw - 0.03, railY - 0.02, railY + 0.24, -hd + 0.05, hd - 0.05));                              // ที่นอนสปริง
+    g.add(box(band, -hw + 0.025, hw - 0.025, railY + 0.2, railY + 0.215, -hd + 0.045, hd - 0.045, { cast: false }));
+    return g;
+  },
+  nightstand(f) { // ตู้ข้างเตียงไม้อ่อน 2 ลิ้นชัก ไม่มีมือจับ
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, wood = mat(f.color, 0.6), gap = mat('#8a7457', 0.8);
+    g.add(box(wood, -hw, hw, 0, f.h, -hd + 0.012, hd));
+    const ym = 0.03 + (f.h - 0.06) / 2;
+    for (const [y0, y1] of [[0.03, ym - 0.004], [ym + 0.004, f.h - 0.03]]) g.add(box(wood, -hw + 0.012, hw - 0.012, y0, y1, -hd, -hd + 0.014));
+    g.add(box(gap, -hw + 0.012, hw - 0.012, ym - 0.004, ym + 0.004, -hd + 0.004, -hd + 0.012, { cast: false }));
+    return g;
+  },
+  glassdesk(f) {  // โต๊ะโครงเหล็กดำ ท็อปกระจก + ชั้นกระจกใต้ท็อป
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, t = 0.018, steel = mat(f.color, 0.4, 0.6);
+    const glass = new THREE.MeshStandardMaterial({ color: 0xbfd9d4, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.35, depthWrite: false });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = sx * (hw - t / 2), z = sz * (hd - t / 2);
+      g.add(box(steel, x - t / 2, x + t / 2, 0, f.h, z - t / 2, z + t / 2));
+    }
+    for (const y of [f.h - 0.02, f.h - 0.16, 0.025]) {
+      for (const sz of [-1, 1]) g.add(box(steel, -hw, hw, y - 0.01, y + 0.01, sz * (hd - t / 2) - t / 2, sz * (hd - t / 2) + t / 2));
+      for (const sx of [-1, 1]) g.add(box(steel, sx * (hw - t / 2) - t / 2, sx * (hw - t / 2) + t / 2, y - 0.01, y + 0.01, -hd, hd));
+    }
+    for (const y of [f.h, f.h - 0.15]) {
+      const p = box(glass, -hw + 0.005, hw - 0.005, y - 0.006, y, -hd + 0.005, hd - 0.005, { cast: false });
+      p.renderOrder = 2;
+      g.add(p);
+    }
+    return g;
+  },
+  adde(f) {       // เก้าอี้เหล็กดำ เบาะ/พนักเจาะรู (ทำเป็นแผ่นทึบ)
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, seatY = 0.45, t = 0.018;
+    const steel = mat('#1a1b1d', 0.45, 0.5), shell = mat(f.color, 0.6);
+    for (const sx of [-1, 1]) {
+      const x = sx * (hw - 0.03);
+      g.add(box(steel, x - t / 2, x + t / 2, 0, seatY, -hd + 0.03, -hd + 0.03 + t));            // ขาหน้า
+      g.add(box(steel, x - t / 2, x + t / 2, 0, f.h, hd - 0.05, hd - 0.05 + t));                // ขาหลังต่อพนัก
+      g.add(box(steel, x - t / 2, x + t / 2, 0.16, 0.18, -hd + 0.03, hd - 0.04));               // คานล่าง
+    }
+    g.add(box(shell, -hw + 0.01, hw - 0.01, seatY - 0.02, seatY, -hd + 0.01, hd - 0.04));
+    g.add(box(shell, -hw + 0.02, hw - 0.02, seatY + 0.15, f.h - 0.02, hd - 0.07, hd - 0.05));
+    return g;
+  },
+  wardrobe2(f) {  // ตู้เสื้อผ้าลายไม้อ่อน 2 บาน (ตามรูป): บานซ้ายไม้ · บานขวากระจกกรอบเทาเข้ม
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2, wood = mat(f.color, 0.65), dark = mat('#4d5a61', 0.5);
+    g.add(box(wood, -hw, hw, 0, f.h, -hd + 0.02, hd));
+    g.add(box(dark, -hw + 0.004, -0.004, 0.04, f.h - 0.03, -hd, -hd + 0.02));                   // บานกระจก (ขวาเมื่อมองจากหน้าตู้ = -X)
+    g.add(box(MAT.mirror, -hw + 0.05, -0.05, 0.1, f.h - 0.09, -hd - 0.002, -hd + 0.005, { cast: false }));
+    g.add(box(wood, 0.004, hw - 0.004, 0.04, f.h - 0.03, -hd, -hd + 0.02));                      // บานไม้
+    g.add(box(mat('#8e9397', 0.3, 0.6), 0.035, 0.05, 0.9, 1.25, -hd - 0.025, -hd));
+    return g;
+  },
+  bin(f) {
+    const g = new THREE.Group(), body = mat(f.color, 0.4, 0.3);
+    body.side = THREE.DoubleSide;
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(f.w / 2, f.w / 2 * 0.85, f.h, 24, 1, true), body);
+    m.position.y = f.h / 2;
+    m.castShadow = true;
+    g.add(m);
+    g.add(box(body, -f.w * 0.3, f.w * 0.3, 0, 0.01, -f.w * 0.3, f.w * 0.3));
+    return g;
+  },
+};
+
+BUILD.bed6 = BUILD.bed;
+BUILD.desk100 = BUILD.desk;
+BUILD.desk160 = BUILD.desk;
+
+// =====================================================================
+// พื้นที่ + การชน
+// =====================================================================
+const TOL = 1e-4;
+function rectOf(f, rot = f.rotation, x = f.x, z = f.z) {
+  const a = deg(rot || 0), c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a));
+  const hx = (f.w * c + f.d * s) / 2, hz = (f.w * s + f.d * c) / 2;
+  return { x0: x - hx, x1: x + hx, z0: z - hz, z1: z + hz };
+}
+const overlap = (a, b) => a.x0 < b.x1 - TOL && a.x1 > b.x0 + TOL && a.z0 < b.z1 - TOL && a.z1 > b.z0 + TOL;
+const obstaclesFor = (id) => STATIC.concat(furniture.filter((f) => f.id !== id).map((f) => ({ name: f.name, ...rectOf(f) })));
+function collides(rect, id) {
+  for (const o of obstaclesFor(id)) if (overlap(rect, o)) return o.name;
+  return null;
+}
+// ระยะที่ขยับได้จริงตามแกนเดียว (หยุดชิดสิ่งกีดขวาง ไม่ทะลุ)
+function sweep(r, axis, delta, obs) {
+  if (Math.abs(delta) < TOL) return 0;
+  const [a0, a1, b0, b1] = axis === 'x' ? ['x0', 'x1', 'z0', 'z1'] : ['z0', 'z1', 'x0', 'x1'];
+  let allowed = delta;
+  for (const o of obs) {
+    if (r[b1] <= o[b0] + TOL || r[b0] >= o[b1] - TOL) continue;
+    if (delta > 0 && o[a0] >= r[a1] - TOL) allowed = Math.min(allowed, o[a0] - r[a1]);
+    if (delta < 0 && o[a1] <= r[a0] + TOL) allowed = Math.max(allowed, o[a1] - r[a0]);
+  }
+  return allowed;
+}
+// ระยะห่าง 4 ทิศถึงสิ่งกีดขวางที่ใกล้สุด
+function gaps(f) {
+  const r = rectOf(f), obs = obstaclesFor(f.id), out = [];
+  for (const [axis, s] of [['x', 1], ['x', -1], ['z', 1], ['z', -1]]) {
+    const [a0, a1, b0, b1] = axis === 'x' ? ['x0', 'x1', 'z0', 'z1'] : ['z0', 'z1', 'x0', 'x1'];
+    let best = Infinity, hit = null;
+    for (const o of obs) {
+      if (r[b1] <= o[b0] + TOL || r[b0] >= o[b1] - TOL) continue;
+      const d = s > 0 ? o[a0] - r[a1] : r[a0] - o[a1];
+      if (d >= -TOL && d < best) { best = Math.max(0, d); hit = o; }
+    }
+    if (!hit) continue;
+    const mid = (Math.max(r[b0], hit[b0]) + Math.min(r[b1], hit[b1])) / 2;
+    out.push({ axis, s, from: s > 0 ? r[a1] : r[a0], dist: best, mid });
+  }
+  return out;
+}
+// หาตำแหน่งว่างที่ใกล้ (cx, cz) ที่สุด บนกริด 5 ซม.
+function findSpot(f, rot, cx, cz, maxR = Infinity) {
+  let best = null, bd = Infinity;
+  for (let i = 0; i <= Math.round(W / 0.05); i++) for (let j = 0; j <= Math.round(D / 0.05); j++) {
+    const x = i * 0.05, z = j * 0.05, dd = (x - cx) ** 2 + (z - cz) ** 2;
+    if (dd >= bd || dd > maxR * maxR) continue;
+    if (!collides(rectOf(f, rot, x, z), f.id)) { bd = dd; best = { x: +x.toFixed(2), z: +z.toFixed(2) }; }
+  }
+  return best;
+}
+
+// =====================================================================
+// เฟอร์นิเจอร์: สร้าง/แสดง
+// =====================================================================
+const furnitureGroup = new THREE.Group();
+const planLabels = new THREE.Group();
+planLabels.visible = false;
+scene.add(furnitureGroup, planLabels);
+const objs = new Map(), tags = new Map();
+let selectedId = null;
+
+const cm = (m) => Math.round(m * 100);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const byId = (id) => furniture.find((f) => f.id === id);
+const newId = () => 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+function place(f) {
+  invalidate({ shadows: true });
+  const o = objs.get(f.id);
+  if (o) { o.position.set(f.x, 0, f.z); o.rotation.y = deg(f.rotation || 0); }
+  const t = tags.get(f.id);
+  if (t) t.position.set(f.x, 2.72, f.z);
+}
+
+function rebuild() {
+  invalidate({ shadows: true });
+  disposeGroup(furnitureGroup);
+  disposeGroup(planLabels);
+  objs.clear(); tags.clear();
+  for (const f of furniture) {
+    const o = (BUILD[f.type] || BUILD.box)(f);
+    o.userData.id = f.id;
+    furnitureGroup.add(o);
+    objs.set(f.id, o);
+    const r = rectOf(f);
+    const t = textPlane(f.name, { size: 0.2, maxW: r.x1 - r.x0 - 0.06, bg: 'rgba(255,255,255,0.82)' });
+    planLabels.add(t);
+    tags.set(f.id, t);
+    place(f);
+  }
+  renderList();
+  updateSelection();
+  persist();
+}
+
+
+// ---------- ไฮไลต์ + เส้นระยะห่าง ----------
+const ACCENT = 0xb0703c, BAD = 0xc0392b;
+const selBox = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)),
+  new THREE.LineBasicMaterial({ color: ACCENT }));
+const selFloor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+  new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.22, depthWrite: false }));
+selBox.visible = selFloor.visible = false;
+scene.add(selBox, selFloor);
+
+const gapViz = Array.from({ length: 4 }, () => {
+  const bar = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: ACCENT, depthWrite: false }));
+  bar.renderOrder = 3;
+  const el = document.createElement('div');
+  el.className = 'gap';
+  const label = new CSS2DObject(el);
+  bar.visible = label.visible = false;
+  scene.add(bar, label);
+  return { bar, label, el };
+});
+
+function updateSelection() {
+  invalidate();
+  const f = selectedId && byId(selectedId);
+  selBox.visible = selFloor.visible = !!f;
+  document.getElementById('selbar').hidden = !f;
+  if (!f) { gapViz.forEach((g) => { g.bar.visible = g.label.visible = false; }); return; }
+
+  const r = rectOf(f);
+  selBox.position.set(f.x, f.h / 2, f.z);
+  selBox.rotation.y = deg(f.rotation || 0);
+  selBox.scale.set(f.w + 0.03, f.h + 0.03, f.d + 0.03);
+  selFloor.position.set(f.x, 0.007, f.z);
+  selFloor.scale.set(r.x1 - r.x0, 1, r.z1 - r.z0);
+
+  const gs = gaps(f);
+  gapViz.forEach((g, i) => {
+    const q = gs[i];
+    if (!q) { g.bar.visible = g.label.visible = false; return; }
+    const to = q.from + q.s * q.dist, mid = (q.from + to) / 2;
+    g.bar.visible = q.dist > 0.005;
+    if (q.axis === 'x') { g.bar.position.set(mid, 0.012, q.mid); g.bar.scale.set(q.dist, 1, 0.014); }
+    else { g.bar.position.set(q.mid, 0.012, mid); g.bar.scale.set(0.014, 1, q.dist); }
+    g.label.visible = true;
+    g.label.position.set(q.axis === 'x' ? mid : q.mid, 0.05, q.axis === 'x' ? q.mid : mid);
+    g.el.textContent = `${cm(q.dist)} ซม.`;
+  });
+
+  document.getElementById('selName').textContent = f.name;
+  document.getElementById('selDim').textContent =
+    `${cm(f.w)} × ${cm(f.d)} × ${cm(f.h)} ซม. · หมุน ${f.rotation || 0}°`;
+}
+
+function flash(color = BAD) {
+  selBox.material.color.set(color);
+  selFloor.material.color.set(color);
+  setTimeout(() => { selBox.material.color.set(ACCENT); selFloor.material.color.set(ACCENT); invalidate(); }, 450);
+}
+
+function select(id) {
+  selectedId = id;
+  updateSelection();
+  document.querySelectorAll('#fList .item').forEach((b) => b.classList.toggle('on', b.dataset.id === id));
+}
+
+// ---------- รายการในแผง ----------
+function renderList() {
+  const list = document.getElementById('fList');
+  document.getElementById('fCount').textContent = furniture.length ? `(${furniture.length})` : '';
+  if (!furniture.length) {
+    list.innerHTML = '<li class="empty">ยังว่าง — กดเพิ่มจากรายการด้านบน</li>';
+    return;
+  }
+  list.innerHTML = furniture.map((f) => {
+    const hitName = collides(rectOf(f), f.id);
+    const warn = [hitName && `ทับ${hitName}`, f.h > H && 'สูงเกินเพดาน'].filter(Boolean);
+    return `<li><button type="button" class="item${f.id === selectedId ? ' on' : ''}" data-id="${esc(f.id)}">
+      <span class="nm">${esc(f.name)}</span>
+      <span class="dim">${cm(f.w)}×${cm(f.d)} ซม. · X ${f.x.toFixed(2)} Z ${f.z.toFixed(2)}${f.rotation ? ` · ${f.rotation}°` : ''}</span>
+      ${warn.length ? `<span class="warn">⚠ ${esc(warn.join(' · '))}</span>` : ''}</button></li>`;
+  }).join('');
+}
+
+// ---------- คำสั่ง ----------
+function addItem(type) {
+  const c = CATALOG[type];
+  const f = { id: newId(), type, name: c.name, w: c.w, d: c.d, h: c.h, x: 0, z: 0, rotation: 0, color: c.color };
+  let spot = null;
+  for (const rot of [0, 90]) {
+    spot = findSpot(f, rot, W / 2, D * 0.62);
+    if (spot) { f.rotation = rot; break; }
+  }
+  if (!spot) { toast(`ไม่มีที่ว่างพอสำหรับ${c.name}`, true); return; }
+  Object.assign(f, spot);
+  furniture.push(f);
+  rebuild();
+  select(f.id);
+  toast(`เพิ่ม${c.name}แล้ว`);
+}
+
+function rotateSelected() {
+  const f = selectedId && byId(selectedId);
+  if (!f) return;
+  const rot = ((f.rotation || 0) + 90) % 360;
+  const spot = collides(rectOf(f, rot), f.id) ? findSpot(f, rot, f.x, f.z, 0.6) : { x: f.x, z: f.z };
+  if (!spot) {
+    flash();
+    toast(`หมุนไม่ได้ จะชน${collides(rectOf(f, rot), f.id)}`, true);
+    return;
+  }
+  Object.assign(f, spot, { rotation: rot });
+  rebuild();
+}
+
+function removeSelected() {
+  const i = furniture.findIndex((f) => f.id === selectedId);
+  if (i < 0) return;
+  const [f] = furniture.splice(i, 1);
+  selectedId = null;
+  rebuild();
+  toast(`ลบ${f.name}แล้ว`);
+}
+
+// ---------- บันทึก ----------
+const STORE_KEY = 'dreamrooms.dorm24.v2';
+const serialize = () => ({
+  app: 'DreamRooms', version: 1, room: { W, D, H }, savedAt: new Date().toISOString(),
+  furniture: furniture.map(({ id, type, name, w, d, h, x, z, rotation, color }) => ({ id, type, name, w, d, h, x, z, rotation, color })),
+});
+function persist() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(serialize())); } catch { /* storage ใช้ไม่ได้ — ข้าม */ }
+}
+function parseLayout(data) {
+  const arr = Array.isArray(data) ? data : data?.furniture;
+  if (!Array.isArray(arr)) throw new Error('ไม่พบรายการ furniture ในไฟล์');
+  const seen = new Set(), out = [];
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
+  for (const raw of arr) {
+    const f = {
+      type: CATALOG[raw?.type] ? raw.type : 'box',
+      name: typeof raw?.name === 'string' && raw.name.trim() ? raw.name.trim().slice(0, 40) : 'ไม่มีชื่อ',
+      w: num(raw?.w), d: num(raw?.d), h: num(raw?.h), x: num(raw?.x), z: num(raw?.z),
+      rotation: ((Math.round(num(raw?.rotation) || 0) % 360) + 360) % 360,
+      color: /^#[0-9a-f]{6}$/i.test(raw?.color) ? raw.color : '#b8b2a7',
+    };
+    if (![f.w, f.d, f.h].every((v) => v > 0 && v < 10) || !Number.isFinite(f.x) || !Number.isFinite(f.z)) continue;
+    let id = typeof raw?.id === 'string' && raw.id ? raw.id : newId();
+    if (seen.has(id)) id = newId();
+    seen.add(id);
+    out.push({ id, ...f });
+  }
+  if (arr.length && !out.length) throw new Error('ข้อมูลเฟอร์นิเจอร์ในไฟล์ไม่ถูกต้อง');
+  return out;
+}
+function loadLayout(list) {
+  furniture.splice(0, furniture.length, ...list);
+  selectedId = null;
+  rebuild();
+}
+const defaultLayout = () => DEFAULT_LAYOUT.map(({ type, x, z, rotation, ...o }) => {
+  const c = CATALOG[type];
+  return { id: newId(), type, name: c.name, w: c.w, d: c.d, h: c.h, color: c.color, ...o, x, z, rotation };
+});
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+}
+const today = () => new Date().toISOString().slice(0, 10);
+
+// =====================================================================
+// แสงกลางวัน / กลางคืน
+// =====================================================================
+// (ธีมมืด/สว่างของ UI อยู่ท้ายส่วนนี้ — สลับสีพื้นหลังฉากตอนโหมดกลางวันด้วย)
+let lightMode = 'day';
+function setLight(mode) {
+  invalidate({ shadows: true });
+  lightMode = mode;
+  const night = mode === 'night';
+  sun.intensity = night ? 0 : 2.4;
+  hemi.intensity = night ? 0.6 : 1.35;
+  hemi.color.set(night ? 0xb9a58c : 0xffffff);   // กลางคืน: แสงสะท้อนโทนอุ่นจากไฟในห้อง
+  hemi.groundColor.set(night ? 0x3a302a : 0xd8c9b2);
+  downlights.forEach((l) => { l.intensity = night ? 8 : 2.6; l.color.set(night ? 0xffd6a6 : 0xfff4e6); });
+  bathLight.intensity = night ? 2.2 : 0;
+  balconyLight.intensity = night ? 1.6 : 0;
+  scene.background.copy(night ? SKY.night : SKY.day);
+  MAT.glass.color.set(night ? 0x1d2a3a : 0xcfe6ef);
+  MAT.glass.opacity = night ? 0.45 : 0.2;
+  MAT.floor.envMapIntensity = night ? 0.12 : 0.45;
+  MAT.downlight.color.set(night ? 0xfff0d2 : 0xfffaf0);
+  renderer.toneMappingExposure = night ? 1.15 : 1.05;
+  document.querySelectorAll('#light button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
+}
+
+// ธีม UI มืด/สว่าง — พื้นหลังฉากตอนกลางวันเปลี่ยนตาม
+const themeBtn = document.getElementById('theme-btn');
+function applyTheme(t, save) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === 'dark' ? '☀️' : '🌙';
+  SKY.day.set(t === 'dark' ? SKY_DAY.dark : SKY_DAY.light);
+  if (save) { try { localStorage.setItem('dreamrooms-theme', t); } catch { /* ข้าม */ } }
+  setLight(lightMode);
+}
+themeBtn.addEventListener('click', () => applyTheme(isDark() ? 'light' : 'dark', true));
+applyTheme(document.documentElement.dataset.theme, false);
+
+// =====================================================================
+// มุมมอง
+// =====================================================================
+const panel = document.getElementById('panel');
+const isMobile = () => matchMedia('(max-width: 640px)').matches;
+// พื้นที่ขอบจอที่ถูก UI บัง (px): แผงเมนู, แถบเลือกชิ้นด้านบน, แถบพิกัดด้านล่าง
+function insets() {
+  const r = panel.getBoundingClientRect();
+  return isMobile() ? { l: 0, t: 64, b: Math.max(0, innerHeight - r.top) } : { l: r.right, t: 60, b: 52 };
+}
+let view = 'orbit', tween = null;
+// เลื่อนจุดกึ่งกลางภาพไปกลางพื้นที่ที่แผงไม่บัง
+function applyLayout() {
+  invalidate();
+  const { l, t, b } = insets();
+  for (const cam of [persp, ortho]) cam.setViewOffset(innerWidth, innerHeight, -l / 2, (b - t) / 2, innerWidth, innerHeight);
+  persp.aspect = innerWidth / innerHeight;
+  persp.updateProjectionMatrix();
+  if (view === 'top') fitOrtho();
+}
+function fitOrtho() {
+  const { l, t, b } = insets();
+  const freeW = Math.max(120, innerWidth - l), freeH = Math.max(120, innerHeight - b - t);
+  const pxPerM = Math.min(freeW / (PLAN.x1 - PLAN.x0), freeH / (PLAN.z1 - PLAN.z0)) * 0.95;
+  const hw = innerWidth / pxPerM / 2, hh = innerHeight / pxPerM / 2;
+  Object.assign(ortho, { left: -hw, right: hw, top: hh, bottom: -hh });
+  ortho.updateProjectionMatrix();
+}
+// ระยะกล้องที่เห็นทั้งห้องในพื้นที่ว่าง (เช็ก 8 ทิศ เพราะกล้องหมุนรอบห้อง)
+const CORNERS = [];
+for (const x of [-T, W + T]) for (const y of [0, H]) for (const z of [-T, BALCONY_Z1]) CORNERS.push(new V(x, y, z));
+function fitDistance(dir, target) {
+  const cam = persp.clone(), { l, t, b } = insets(), m = 0.04;
+  const xmin = -1 + (2 * l) / innerWidth + m, ymin = -1 + (2 * b) / innerHeight + m;
+  const xmax = 1 - m, ymax = 1 - (2 * t) / innerHeight - m;
+  let need = 0;
+  for (let k = 0; k < 8; k++) {
+    const d = dir.clone().applyAxisAngle(new V(0, 1, 0), (k * Math.PI) / 4);
+    let lo = 1, hi = 60;
+    for (let i = 0; i < 26; i++) {
+      const mid = (lo + hi) / 2;
+      cam.position.copy(target).addScaledVector(d, mid);
+      cam.lookAt(target);
+      cam.updateMatrixWorld();
+      const ok = CORNERS.every((c) => {
+        const p = c.clone().project(cam);
+        return p.x >= xmin && p.x <= xmax && p.y >= ymin && p.y <= ymax;
+      });
+      if (ok) hi = mid; else lo = mid;
+    }
+    need = Math.max(need, hi);
+  }
+  return need;
+}
+
+// =====================================================================
+// โหมดเดิน (มุมคนยืน): WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง · มือถือใช้จอยซ้ายล่าง
+// ชนผนัง บิวท์อิน สุขภัณฑ์ และเฟอร์นิเจอร์ · เดินผ่านประตูห้องน้ำ/ประตูระเบียงได้
+// =====================================================================
+const walk = (() => {
+  const R = 0.25, keys = new Set(), joyVec = { x: 0, y: 0 };   // รัศมีตัวคน (กันกล้องชิดผนังเกินไป)
+  const touch = matchMedia('(pointer: coarse)').matches;
+  let on = false, yaw = 0, pitch = 0, eyeY = 1.6, last = 0;
+  const pos = new V();
+  const Bz0 = FIXED.bath.z0 + T, ix = FIXED.bath.x1 - T;
+  const WALKABLE = [
+    { x0: 0, x1: W, z0: 0, z1: FIXED.bath.z0 },                                                   // ห้องหลัก
+    { x0: FIXED.bath.x1, x1: W, z0: FIXED.bath.z0 - 0.01, z1: D },                                 // ซุ้มหน้าระเบียง
+    { x0: 0, x1: ix, z0: Bz0, z1: FIXED.bath.z1 },                                                 // ห้องน้ำ
+    { x0: ix - 0.05, x1: FIXED.bath.x1 + 0.05, z0: FIXED.bath.doorZ0, z1: FIXED.bath.doorZ1 },     // ช่องประตูห้องน้ำ
+    { x0: FIXED.slider.x0, x1: FIXED.slider.x1, z0: D - 0.05, z1: D + T + 0.05 },                  // ช่องประตูระเบียง
+    { x0: FIXED.bath.x1, x1: W, z0: D + T, z1: BALCONY_Z1 - 0.12 },                                // ระเบียง (ถึงขอบปูน)
+  ];
+  // ตำแหน่งเดียวกับที่วาดในห้องน้ำ
+  const FIXED_BLOCKS = [
+    FIXED.pillar,
+    { x0: 0, x1: 0.44, z0: Bz0 + 0.08, z1: Bz0 + 0.56 },                                           // อ่างล้างหน้า
+    { x0: 0, x1: 0.64, z0: Bz0 + 0.62, z1: Bz0 + 1.02 },                                           // ชักโครก
+    { x0: ix - (FIXED.bath.doorZ1 - FIXED.bath.doorZ0), x1: ix, z0: FIXED.bath.doorZ0, z1: FIXED.bath.doorZ0 + 0.05 },   // บานประตูห้องน้ำ (เปิดค้างด้านใน)
+  ];
+  const inside = (x, z) => WALKABLE.some((r) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1);
+  function blocked(x, z) {
+    for (const [px, pz] of [[x, z], [x - R, z], [x + R, z], [x, z - R], [x, z + R]]) if (!inside(px, pz)) return true;
+    const obs = FIXED_BLOCKS.concat(furniture.filter((f) => f.h > 0.25).map((f) => rectOf(f)));
+    return obs.some((o) => x > o.x0 - R && x < o.x1 + R && z > o.z0 - R && z < o.z1 + R);
+  }
+  const apply = () => { persp.position.set(pos.x, eyeY, pos.z); persp.rotation.set(pitch, yaw, 0, 'YXZ'); };
+
+  const joy = document.getElementById('joy'), knob = document.getElementById('joyKnob');
+  const crosshair = document.getElementById('crosshair'), moreBtnEl = document.getElementById('more-btn');
+  const canLock = !touch && typeof canvas.requestPointerLock === 'function';
+  let locked = false;
+  const HINT_WALK = canLock
+    ? 'คลิกภาพแล้วขยับเมาส์เพื่อหันมอง · WASD เดิน · Shift วิ่ง · Esc ปลดเมาส์'
+    : 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง';
+  const HINT_LOCKED = 'ขยับเมาส์เพื่อหันมอง · WASD เดิน · Shift วิ่ง · Esc ปลดเมาส์';
+  function placeCrosshair() {   // จุดกึ่งกลางภาพจริง (ภาพถูกเลื่อนหลบแผงด้วย setViewOffset)
+    const { l, t, b } = insets();
+    crosshair.style.left = `${innerWidth / 2 + l / 2}px`;
+    crosshair.style.top = `${innerHeight / 2 - (b - t) / 2}px`;
+  }
+  function setPanelMini(mini) {
+    panel.classList.toggle('mini', mini);
+    panel.classList.remove('open');
+    moreBtnEl.setAttribute('aria-expanded', 'false');
+    moreBtnEl.textContent = 'เมนู';
+    applyLayout();
+  }
+  document.addEventListener('pointerlockchange', () => {
+    locked = document.pointerLockElement === canvas;
+    crosshair.hidden = !(on && locked);
+    if (locked) placeCrosshair();
+    if (on) document.getElementById('hint').textContent = locked ? HINT_LOCKED : HINT_WALK;
+  });
+  document.addEventListener('mousemove', (e) => {   // เมาส์ล็อกอยู่: ขยับเมาส์ = หันมอง (แบบเกม FPS)
+    if (!on || !locked) return;
+    yaw -= e.movementX * 0.0022;
+    pitch = Math.max(-1.3, Math.min(1.3, pitch - e.movementY * 0.0022));
+  });
+  function start(e) {
+    on = true;
+    pos.set(e.pos.x, 0, e.pos.z);
+    eyeY = e.pos.y;
+    const d = e.look.clone().sub(e.pos);
+    yaw = Math.atan2(-d.x, -d.z);
+    pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
+    last = performance.now();
+    keys.clear();
+    joy.hidden = !touch;
+    setPanelMini(true);
+    document.getElementById('hint').textContent = HINT_WALK;
+    if (touch) joy.style.bottom = `${(isMobile() ? innerHeight - panel.getBoundingClientRect().top : 0) + 20}px`;
+    apply();
+  }
+  function stop() {
+    if (!on) return;
+    on = false; joy.hidden = true; crosshair.hidden = true; keys.clear();
+    if (locked) document.exitPointerLock();
+    setPanelMini(false);
+  }
+  function update() {
+    const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    let f = -joyVec.y, s = joyVec.x;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) f += 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) f -= 1;
+    if (keys.has('KeyD')) s += 1;
+    if (keys.has('KeyA')) s -= 1;
+    if (keys.has('ArrowLeft')) yaw += 1.8 * dt;
+    if (keys.has('ArrowRight')) yaw -= 1.8 * dt;
+    const len = Math.hypot(f, s);
+    if (len > 0.05) {
+      const run = keys.has('ShiftLeft') || keys.has('ShiftRight');
+      const step = (run ? 2.6 : 1.4) * dt / Math.max(1, len);
+      const dx = (-Math.sin(yaw) * f + Math.cos(yaw) * s) * step, dz = (-Math.cos(yaw) * f - Math.sin(yaw) * s) * step;
+      const stuck = blocked(pos.x, pos.z);                       // ถ้าเกิดในที่ชน ให้เดินออกได้
+      if (stuck || !blocked(pos.x + dx, pos.z)) pos.x += dx;
+      if (stuck || !blocked(pos.x, pos.z + dz)) pos.z += dz;
+    }
+    apply();
+  }
+
+  // ลากเพื่อหันมอง (เมาส์และนิ้ว) — ดักก่อนระบบลากเฟอร์นิเจอร์/กล้อง
+  let look = null;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!on) return;
+    e.stopImmediatePropagation();
+    if (canLock && !locked && e.pointerType === 'mouse' && e.button === 0) {
+      try { canvas.requestPointerLock()?.catch?.(() => {}); } catch { /* บางเบราว์เซอร์/iframe ไม่อนุญาต — ใช้การลากแทน */ }
+    }
+    if (look || locked) return;
+    look = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* ระหว่างขอล็อกเมาส์ capture ไม่ได้ — ไม่เป็นไร */ }
+  }, { capture: true });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!on || locked || !look || e.pointerId !== look.id) return;
+    yaw += (e.clientX - look.x) * 0.0045;
+    pitch = Math.max(-1.3, Math.min(1.3, pitch + (e.clientY - look.y) * 0.0045));
+    look.x = e.clientX; look.y = e.clientY;
+  });
+  const endLook = (e) => { if (look && e.pointerId === look.id) look = null; };
+  canvas.addEventListener('pointerup', endLook);
+  canvas.addEventListener('pointercancel', endLook);
+
+  addEventListener('keydown', (e) => {
+    if (!on || e.target.closest?.('input, textarea')) return;
+    if (/^(Key[WASD]|Arrow|Shift)/.test(e.code)) {
+      keys.add(e.code);
+      if (e.code.startsWith('Arrow')) e.preventDefault();
+    }
+  });
+  addEventListener('keyup', (e) => keys.delete(e.code));
+  addEventListener('blur', () => keys.clear());
+
+  // จอยสติ๊กบนจอสัมผัส
+  let joyId = null;
+  function moveJoy(e) {
+    const r = joy.getBoundingClientRect(), max = r.width / 2 - 22;
+    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const l = Math.hypot(dx, dy);
+    if (l > max) { dx *= max / l; dy *= max / l; }
+    joyVec.x = dx / max; joyVec.y = dy / max;
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+  joy.addEventListener('pointerdown', (e) => { joyId = e.pointerId; joy.setPointerCapture(e.pointerId); moveJoy(e); });
+  joy.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) moveJoy(e); });
+  const endJoy = (e) => { if (e.pointerId !== joyId) return; joyId = null; joyVec.x = joyVec.y = 0; knob.style.transform = ''; };
+  joy.addEventListener('pointerup', endJoy);
+  joy.addEventListener('pointercancel', endJoy);
+
+  return { start, stop, update, touch, canStand: (x, z) => !blocked(x, z), get on() { return on; }, get locked() { return locked; } };
+})();
+
+const EYE = { pos: new V((FIXED.entry.x0 + FIXED.entry.x1) / 2 - 0.1, 1.6, 0.45), look: new V(1.6, 1.3, D) };
+const BATH_EYE = { pos: new V(FIXED.bath.x1 + 0.15, 1.6, (FIXED.bath.doorZ0 + FIXED.bath.doorZ1) / 2 + 0.05), look: new V(0, 0.95, FIXED.bath.doorZ1 - 0.1) };   // ยืนหน้าประตูห้องน้ำ (แบบในวิดีโอ) มองชักโครก/อ่าง/โซนอาบน้ำ
+const BALC_EYE = { pos: new V((FIXED.slider.x0 + FIXED.slider.x1) / 2 + 0.2, 1.6, D + 0.3), look: new V(1.9, 0.85, BALCONY_Z1 + 0.5) };
+const ORBIT = { dir: new V(-4.5, 5.9, -7.3).normalize(), target: new V(W / 2, 0.8, BALCONY_Z1 / 2) };
+const HINT = {
+  top: 'ลากพื้นเพื่อเลื่อน · สกรอลเพื่อซูม · ลากเฟอร์นิเจอร์เพื่อย้าย · ดับเบิลคลิกพื้นเพื่อลงไปเดิน',
+  entry: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
+  bath: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
+  balcony: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
+  orbit: 'ลากเพื่อหมุน · สกรอลเพื่อซูม · ดับเบิลคลิกพื้นเพื่อลงไปเดิน',
+  free: 'WASD / ลูกศร เดิน · ลากเพื่อหันมอง · Shift วิ่ง',
+};
+const perspTarget = new V();
+let freeEye = EYE;   // จุดเริ่มเดินจากการดับเบิลคลิกพื้น
+
+function setView(name, instant = false) {
+  if (view !== 'top') perspTarget.copy(controls.target);
+  view = name;
+  document.querySelectorAll('#views button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
+  document.getElementById('hint').textContent = HINT[name];
+  const top = name === 'top', entry = ['entry', 'bath', 'balcony', 'free'].includes(name);
+
+  activeCam = top ? ortho : persp;
+  controls.object = activeCam;
+  controls.autoRotate = false;
+  controls.autoRotateSpeed = 0.6;
+  controls.enableRotate = !top;
+  controls.enabled = !entry;
+  if (!entry) walk.stop();
+  controls.enableZoom = !entry;
+  controls.enablePan = !entry;
+  controls.rotateSpeed = entry ? 0.35 : 1;
+  persp.fov = entry ? 65 : 45;          // มุมสายตาคนยืน = เลนส์กว้างแบบมือถือ
+  persp.updateProjectionMatrix();
+  controls.minDistance = entry ? 0.01 : 0.25;
+  controls.maxDistance = entry ? 1 : 40;
+  controls.maxPolarAngle = name === 'orbit' ? Math.PI * 0.48 : Math.PI;
+  controls.mouseButtons.LEFT = top ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  controls.touches.ONE = top ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+
+  dims.visible = planLabels.visible = top;
+  syncLabels();
+  tween = null;
+
+  if (top) {
+    ortho.zoom = 1;
+    const cx = (PLAN.x0 + PLAN.x1) / 2, cz = (PLAN.z0 + PLAN.z1) / 2;
+    ortho.position.set(cx, 20, cz - 1e-3);        // ประตูอยู่ล่างจอ ระเบียงอยู่บน
+    controls.target.set(cx, 0, cz);
+    applyLayout();
+  } else {
+    let pos, target;
+    if (entry) {
+      walk.start(name === 'free' ? freeEye : name === 'bath' ? BATH_EYE : name === 'balcony' ? BALC_EYE : EYE);
+      document.querySelectorAll('#views button').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
+      if (walk.touch) toast('ใช้จอยซ้ายล่างเพื่อเดิน · ลากจอเพื่อหันมอง');
+      return;
+    }
+    else { target = ORBIT.target.clone(); pos = target.clone().addScaledVector(ORBIT.dir, fitDistance(ORBIT.dir, target)); }
+    controls.target.copy(perspTarget);
+    if (instant) { persp.position.copy(pos); controls.target.copy(target); if (name === 'orbit') controls.autoRotate = true; }
+    else tween = { from: { pos: persp.position.clone(), target: perspTarget.clone() }, to: { pos, target }, t0: performance.now(), dur: 850 };
+  }
+  controls.update();
+}
+controls.addEventListener('start', () => { controls.autoRotate = false; tween = null; });
+
+// =====================================================================
+// ตัวเลือกแสดงผล
+// =====================================================================
+const tCut = document.getElementById('tCut'), tLabels = document.getElementById('tLabels');
+function syncLabels() { invalidate(); fixedLabels.forEach((o) => { o.visible = tLabels.checked && view !== 'top'; }); }
+tLabels.addEventListener('change', syncLabels);
+document.getElementById('tGrid').addEventListener('change', (e) => { grid.visible = e.target.checked; });
+document.getElementById('tCeil').addEventListener('change', (e) => { ceiling.visible = e.target.checked; });
+document.getElementById('tCurtain').addEventListener('change', (e) => setCurtain(e.target.checked));
+document.getElementById('sub').textContent =
+  `ประมาณจากวิดีโอ (ยังไม่ได้วัด) · กว้าง ${W.toFixed(2)} × ลึกถึงประตูระเบียง ${D.toFixed(2)} ม. · ภายใน ≈ ${AREA.toFixed(1)} ตร.ม. · เพดาน ${H.toFixed(2)} ม.`;
+document.getElementById('coordHelp').textContent =
+  `จุด (0, 0) = มุมขวาของผนังทางเข้า เมื่อยืนที่ประตูหันหน้าไประเบียง · X 0 → ${W.toFixed(2)} (ผนังตู้/เตียง → ผนังโต๊ะ) · Z 0 → ${D.toFixed(2)} (ประตู → ประตูระเบียง)`;
+
+function setGhost(group, on) {
+  if (group.userData.ghost === on) return;
+  invalidate();
+  group.userData.ghost = on;
+  group.traverse((o) => {
+    if (!o.isMesh) return;
+    o.userData.mat ??= o.material;
+    o.material = on ? GHOST : o.userData.mat;
+  });
+}
+function updateCutaway(cam = activeCam, enabled = tCut.checked) {
+  for (const w of CUTAWAY) setGhost(w.group, enabled && w.outside(cam.position));
+}
+
+// =====================================================================
+// Pointer: เลือก / ลาก / อ่านพิกัด
+// =====================================================================
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const floorPlane = new THREE.Plane(new V(0, 1, 0), 0);
+const coordEl = document.getElementById('coord');
+const marker = new THREE.Mesh(new THREE.RingGeometry(0.035, 0.05, 32),
+  new THREE.MeshBasicMaterial({ color: ACCENT, depthTest: false }));
+marker.rotation.x = -Math.PI / 2;
+marker.renderOrder = 5;
+marker.visible = false;
+scene.add(marker);
+
+function setRay(e) {
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(pointer, activeCam);
+}
+function floorPoint(e) {
+  setRay(e);
+  return raycaster.ray.intersectPlane(floorPlane, new V());
+}
+function pickFurniture(e) {
+  setRay(e);
+  const hit = raycaster.intersectObjects(furnitureGroup.children, true)[0];
+  let o = hit?.object;
+  while (o && !o.userData.id) o = o.parent;
+  return o ? byId(o.userData.id) : null;
+}
+
+let drag = null, down = null;
+canvas.addEventListener('pointerdown', (e) => {
+  if (drag) { e.stopImmediatePropagation(); return; }         // นิ้วที่สองระหว่างลาก — ไม่ส่งให้กล้อง
+  const f = e.button === 0 || e.pointerType !== 'mouse' ? pickFurniture(e) : null;
+  if (!f) { down = { x: e.clientX, y: e.clientY }; return; }
+  e.stopImmediatePropagation();                              // กันไม่ให้ OrbitControls หมุนกล้อง
+  controls.autoRotate = false;
+  tween = null;
+  select(f.id);
+  const p = floorPoint(e) || new V(f.x, 0, f.z);
+  drag = { id: f.id, x0: f.x, z0: f.z, px: p.x, pz: p.z, pointerId: e.pointerId, moved: false };
+  canvas.setPointerCapture(e.pointerId);
+  canvas.style.cursor = 'grabbing';
+}, { capture: true });
+
+canvas.addEventListener('pointermove', (e) => {
+  if (drag && e.pointerId === drag.pointerId) {
+    const f = byId(drag.id), p = floorPoint(e);
+    if (!f || !p) return;
+    const step = e.shiftKey ? 0.01 : 0.05, snap = (v) => Math.round(v / step) * step;
+    const obs = obstaclesFor(f.id);
+    const dx = sweep(rectOf(f), 'x', drag.x0 + snap(p.x - drag.px) - f.x, obs);
+    f.x += dx;
+    const dz = sweep(rectOf(f), 'z', drag.z0 + snap(p.z - drag.pz) - f.z, obs);
+    f.z += dz;
+    f.x = +f.x.toFixed(4); f.z = +f.z.toFixed(4);
+    if (dx || dz) { drag.moved = true; place(f); updateSelection(); }
+    return;
+  }
+  if (e.pointerType !== 'mouse') return;
+  const f = pickFurniture(e);
+  canvas.style.cursor = f ? 'grab' : '';
+  const hit = raycaster.intersectObject(floor)[0];
+  if (hit) {
+    coordEl.textContent = `X ${hit.point.x.toFixed(2)} · Z ${hit.point.z.toFixed(2)} ม.`;
+    marker.position.set(hit.point.x, 0.01, hit.point.z);
+    marker.visible = !f;
+  } else {
+    coordEl.textContent = 'ชี้บนพื้นเพื่อดูพิกัด';
+    marker.visible = false;
+  }
+});
+
+function endDrag() {
+  if (!drag) return;
+  const moved = drag.moved;
+  drag = null;
+  canvas.style.cursor = '';
+  if (moved) { renderList(); persist(); }
+}
+canvas.addEventListener('pointerup', (e) => {
+  if (drag && e.pointerId === drag.pointerId) { endDrag(); return; }
+  if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6) select(null);   // แตะที่ว่าง = ยกเลิกการเลือก
+  down = null;
+});
+canvas.addEventListener('pointercancel', endDrag);
+
+// ---------- ดับเบิลคลิก (หรือแตะสองครั้ง) บนพื้น → ลงไปยืนเดินตรงจุดนั้น ----------
+// ตรวจเองจาก pointerdown/up (รองรับทั้งเมาส์และนิ้ว) · ลากหรือแตะโดนเฟอร์นิเจอร์ไม่นับ
+let tapStart = null, lastTap = null;
+addEventListener('pointerdown', (e) => {
+  tapStart = e.target === canvas ? { x: e.clientX, y: e.clientY } : null;
+}, { capture: true });
+canvas.addEventListener('pointerup', (e) => {
+  if (!tapStart || Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) > 8 || walk.locked) { tapStart = null; return; }
+  const now = performance.now(), tap = { t: now, x: e.clientX, y: e.clientY };
+  if (hitCurtain(e)) { setCurtain(curtainTarget < 0.5); lastTap = null; tapStart = null; return; }
+  const isDouble = lastTap && now - lastTap.t < 350 && Math.hypot(tap.x - lastTap.x, tap.y - lastTap.y) < 25;
+  lastTap = isDouble ? null : tap;
+  tapStart = null;
+  if (isDouble && !pickFurniture(e)) walkToFloor(e);
+});
+function hitCurtain(e) {
+  if (walk.locked) {                                          // ล็อกเมาส์: ยิงจากจุดเล็ง
+    const { l, t, b } = insets();
+    pointer.set(((innerWidth / 2 + l / 2) / innerWidth) * 2 - 1, -((innerHeight / 2 - (b - t) / 2) / innerHeight) * 2 + 1);
+    raycaster.setFromCamera(pointer, activeCam);
+  } else setRay(e);
+  const blockers = CUTAWAY.map((c) => c.group).filter((g) => !g.userData.ghost).concat(furnitureGroup, bathFront, bathSide);
+  const hit = raycaster.intersectObjects([curtain, ...blockers], true)[0];   // ต้องไม่มีผนัง/ของบังอยู่ก่อน
+  return !!hit && hit.object.parent === curtain;
+}
+function walkToFloor(e) {
+  const p = floorPoint(e);
+  if (!p) return;
+  let spot = walk.canStand(p.x, p.z) ? { x: p.x, z: p.z } : null;
+  for (let r = 0.1; !spot && r <= 0.6; r += 0.1) {           // ถ้าตรงนั้นติดของ หาจุดว่างใกล้ที่สุด
+    for (let k = 0; k < 16 && !spot; k++) {
+      const x = p.x + r * Math.cos((k * Math.PI) / 8), z = p.z + r * Math.sin((k * Math.PI) / 8);
+      if (walk.canStand(x, z)) spot = { x, z };
+    }
+  }
+  if (!spot) { toast('ตรงนั้นยืนไม่ได้ ลองดับเบิลคลิกบนพื้นที่ว่าง', true); return; }
+  const d = new V();
+  activeCam.getWorldDirection(d);
+  d.y = 0;
+  if (d.lengthSq() < 0.01) d.set(0, 0, 1);                   // มองลงตรง ๆ (มุมบน) → หันไปทางระเบียง
+  d.normalize();
+  freeEye = { pos: new V(spot.x, 1.6, spot.z), look: new V(spot.x + d.x, 1.45, spot.z + d.z) };
+  setView('free');
+  document.querySelectorAll('#views button').forEach((b) => b.classList.remove('on'));
+}
+
+// =====================================================================
+// Export PNG (แปลนจากบน orthographic, 150 px/ม.)
+// =====================================================================
+function exportPNG() {
+  const PX = 150, HEAD = 128;
+  const sw = PLAN.x1 - PLAN.x0, sh = PLAN.z1 - PLAN.z0;
+  const w = Math.round(sw * PX), h = Math.round(sh * PX);
+  const cam = new THREE.OrthographicCamera(-sw / 2, sw / 2, sh / 2, -sh / 2, 0.1, 60);
+  const cx = (PLAN.x0 + PLAN.x1) / 2, cz = (PLAN.z0 + PLAN.z1) / 2;
+  cam.up.set(0, 0, 1);                                  // ระเบียงอยู่บน ประตูอยู่ล่าง
+  cam.position.set(cx, 20, cz);
+  cam.lookAt(cx, 0, cz);
+  cam.updateMatrixWorld();
+
+  const prev = { mode: lightMode, dims: dims.visible, plan: planLabels.visible, grid: grid.visible, marker: marker.visible, sel: selectedId };
+  setLight('day');
+  scene.background.set(0xffffff);
+  dims.visible = planLabels.visible = true;
+  grid.visible = marker.visible = false;
+  selectedId = null; updateSelection();
+  updateCutaway(cam, false);
+
+  const pr = renderer.getPixelRatio();
+  renderer.setPixelRatio(1);
+  renderer.setSize(w, h, false);
+  renderer.shadowMap.needsUpdate = true;
+  renderer.render(scene, cam);
+
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h + HEAD;
+  const g = out.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, out.width, out.height);
+  g.drawImage(canvas, 0, HEAD);
+
+  renderer.setPixelRatio(pr);
+  renderer.setSize(innerWidth, innerHeight);
+  setLight(prev.mode);
+  dims.visible = prev.dims; planLabels.visible = prev.plan; grid.visible = prev.grid; marker.visible = prev.marker;
+  selectedId = prev.sel; updateSelection();
+  applyLayout();
+
+  const font = (s, wgt = 400) => `${wgt} ${s}px "IBM Plex Sans Thai", system-ui, sans-serif`;
+  g.fillStyle = '#22262a'; g.font = font(30, 600); g.textBaseline = 'alphabetic';
+  g.fillText('DreamRooms · หอพัก 24 ตร.ม. (ประมาณจากวิดีโอ)', 32, 52);
+  g.fillStyle = '#6b737b'; g.font = font(19);
+  g.fillText(`${W.toFixed(2)} × ${BALCONY_Z1.toFixed(2)} ม. · ภายใน ≈ ${AREA.toFixed(1)} ตร.ม. · เฟอร์นิเจอร์ ${furniture.length} ชิ้น · ${today()}`, 32, 84);
+  g.fillText('ประตูทางเข้าอยู่ด้านล่าง · ห้องน้ำและระเบียงอยู่ด้านบน', 32, 110);
+  const bx = w - 32 - PX, by = 70;                      // สเกลบาร์ 1 ม.
+  g.fillStyle = '#22262a';
+  g.fillRect(bx, by, PX, 6);
+  g.fillRect(bx, by - 8, 2, 22); g.fillRect(bx + PX - 2, by - 8, 2, 22);
+  g.font = font(18, 500); g.textAlign = 'center';
+  g.fillText('1 ม.', bx + PX / 2, by - 14);
+
+  out.toBlob((blob) => { download(blob, `dreamrooms-plan-${today()}.png`); toast('บันทึกภาพแปลนแล้ว'); }, 'image/png');
+}
+
+// =====================================================================
+// UI
+// =====================================================================
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(msg, bad = false) {
+  toastEl.textContent = msg;
+  toastEl.className = 'show' + (bad ? ' bad' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.className = ''; }, 2400);
+}
+
+document.getElementById('cat').innerHTML = Object.entries(CATALOG).map(([type, c]) =>
+  `<button type="button" data-type="${type}"><span>${esc(c.name)}</span><small>${cm(c.w)}×${cm(c.d)} ซม.</small></button>`).join('');
+document.getElementById('cat').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-type]');
+  if (b) addItem(b.dataset.type);
+});
+document.getElementById('fList').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-id]');
+  if (b) select(b.dataset.id);
+});
+document.getElementById('views').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-view]');
+  if (b) setView(b.dataset.view);
+});
+document.getElementById('light').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-mode]');
+  if (b) setLight(b.dataset.mode);
+});
+document.getElementById('bRot').addEventListener('click', rotateSelected);
+document.getElementById('bDel').addEventListener('click', removeSelected);
+document.getElementById('bDesel').addEventListener('click', () => select(null));
+
+document.getElementById('bSave').addEventListener('click', () => {
+  download(new Blob([JSON.stringify(serialize(), null, 2)], { type: 'application/json' }), `dreamrooms-layout-${today()}.json`);
+  toast('บันทึก layout แล้ว');
+});
+const fileIn = document.getElementById('fileIn');
+document.getElementById('bLoad').addEventListener('click', () => fileIn.click());
+fileIn.addEventListener('change', async () => {
+  const file = fileIn.files[0];
+  fileIn.value = '';
+  if (!file) return;
+  try {
+    const list = parseLayout(JSON.parse(await file.text()));
+    loadLayout(list);
+    const bad = list.filter((f) => collides(rectOf(f), f.id)).length;
+    toast(bad ? `โหลดแล้ว ${list.length} ชิ้น · ${bad} ชิ้นวางทับกัน ลากออกได้` : `โหลดแล้ว ${list.length} ชิ้น`, bad > 0);
+  } catch (err) {
+    toast(`โหลดไม่ได้: ${err instanceof SyntaxError ? 'ไฟล์ไม่ใช่ JSON' : err.message}`, true);
+  }
+});
+document.getElementById('bPng').addEventListener('click', exportPNG);
+document.getElementById('bDefault').addEventListener('click', () => { loadLayout(defaultLayout()); toast('จัดตามวิดีโอแล้ว'); });
+
+const bClear = document.getElementById('bClear');
+let clearTimer;
+bClear.addEventListener('click', () => {
+  if (!furniture.length) { toast('ห้องว่างอยู่แล้ว'); return; }
+  if (!bClear.classList.contains('armed')) {
+    bClear.classList.add('armed');
+    bClear.textContent = 'กดอีกครั้งเพื่อยืนยัน';
+    clearTimer = setTimeout(() => { bClear.classList.remove('armed'); bClear.textContent = 'ล้างห้อง'; }, 3000);
+    return;
+  }
+  clearTimeout(clearTimer);
+  bClear.classList.remove('armed');
+  bClear.textContent = 'ล้างห้อง';
+  loadLayout([]);
+  toast('ล้างห้องแล้ว');
+});
+
+const moreBtn = document.getElementById('more-btn');
+moreBtn.addEventListener('click', () => {
+  const open = panel.classList.toggle('open');
+  moreBtn.setAttribute('aria-expanded', open);
+  moreBtn.textContent = open ? 'ซ่อน' : 'เมนู';
+  applyLayout();
+});
+
+addEventListener('keydown', (e) => {
+  if (e.target.closest?.('input, textarea')) return;
+  if (e.key === 'r' || e.key === 'R') rotateSelected();
+  else if (e.key === 'Delete' || e.key === 'Backspace') { if (selectedId) { e.preventDefault(); removeSelected(); } }
+  else if (e.key === 'Escape') select(null);
+});
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+  applyLayout();
+  if (view === 'orbit' && !tween) {             // จอเปลี่ยนขนาด → ถอยกล้องให้เห็นทั้งห้องอีกครั้ง
+    const dir = persp.position.clone().sub(controls.target).normalize();
+    persp.position.copy(controls.target).addScaledVector(dir, fitDistance(dir, controls.target));
+  }
+});
+
+// =====================================================================
+// เริ่ม
+// =====================================================================
+let hadSaved = false;
+try {
+  const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+  if (saved) { hadSaved = true; furniture.push(...parseLayout(saved)); }
+} catch { /* ไม่มี layout เก่า หรืออ่านไม่ได้ */ }
+if (!hadSaved) furniture.push(...defaultLayout());   // เปิดครั้งแรก = จัดตามวิดีโอ
+// ---------- รวม mesh ที่ไม่ขยับ: ห้องน้ำ ระเบียง บิวท์อิน ฯลฯ ที่เป็นลูกตรงของ scene → รวมตาม material ----------
+// (ไม่แตะ: ผนังที่โปร่งใสได้, เฟอร์นิเจอร์, พื้นที่ใช้ raycast, ของโปร่งใส/มี renderOrder, ตัวไฮไลต์)
+function mergeStatic() {
+  const skip = new Set([floor, selFloor, marker, ...gapViz.map((g) => g.bar)]);
+  const buckets = new Map();
+  for (const o of [...scene.children]) {
+    if (!o.isMesh || skip.has(o) || o.renderOrder || Array.isArray(o.material) || o.material.transparent) continue;
+    const key = `${o.material.uuid}|${o.castShadow}|${o.receiveShadow}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(o);
+  }
+  let removed = 0;
+  for (const list of buckets.values()) {
+    if (list.length < 2) continue;
+    const geos = list.map((m) => {
+      m.updateMatrixWorld(true);
+      const g = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()).applyMatrix4(m.matrixWorld);
+      for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+      return g;
+    });
+    const merged = mergeGeometries(geos, false);
+    geos.forEach((g) => g.dispose());
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, list[0].material);
+    mesh.castShadow = list[0].castShadow;
+    mesh.receiveShadow = list[0].receiveShadow;
+    for (const m of list) { scene.remove(m); m.geometry.dispose(); }
+    scene.add(mesh);
+    removed += list.length - 1;
+  }
+  return removed;
+}
+mergeStatic();
+
+// ---------- เหตุการณ์ที่ทำให้ต้องวาดใหม่ ----------
+for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown', 'keyup', 'resize', 'touchmove']) {
+  addEventListener(ev, () => invalidate({ ms: 400 }), { passive: true, capture: true });
+}
+for (const ev of ['change', 'click']) addEventListener(ev, () => invalidate({ shadows: true, ms: 400 }), { capture: true });
+document.addEventListener('visibilitychange', () => invalidate({ ms: 400 }));
+
+// ---------- GPU หลุด (context lost) → แจ้งแล้วโหลดใหม่ ----------
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  toast('การแสดงผล 3D หยุดทำงาน กำลังโหลดใหม่…', true);
+  setTimeout(() => location.reload(), 1500);
+});
+
+rebuild();
+buildDims();
+document.fonts?.ready.then(() => { buildDims(); rebuild(); invalidate(); });
+applyLayout();
+setView('orbit', true);
+
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+// ลดความละเอียดอัตโนมัติถ้าเครื่องวาดไม่ทัน (เฉลี่ย > 28 ms/เฟรม ขณะภาพเคลื่อนไหว)
+let frameAvg = 16, lastFrame = performance.now(), slowFrames = 0;
+const MIN_PR = 1;
+function adaptQuality(now) {
+  const dt = now - lastFrame;
+  lastFrame = now;
+  if (dt > 200) return;                                     // เพิ่งกลับจากหยุดวาด — ไม่นับ
+  frameAvg += (dt - frameAvg) * 0.05;
+  slowFrames = frameAvg > 28 ? slowFrames + 1 : 0;
+  const pr = renderer.getPixelRatio();
+  if (slowFrames > 90 && pr > MIN_PR) {
+    renderer.setPixelRatio(Math.max(MIN_PR, pr - 0.25));
+    renderer.setSize(innerWidth, innerHeight);
+    slowFrames = 0;
+    frameAvg = 16;
+  }
+}
+const lastView = new THREE.Matrix4(), lastProj = new THREE.Matrix4();
+// เทียบแบบมีค่าเผื่อ: damping ของกล้องหมุนต่ออีกนิดเดียวไปเรื่อย ๆ จนมองไม่เห็นความต่าง
+const matNear = (a, b) => a.elements.every((v, i) => Math.abs(v - b.elements[i]) < 1e-5);
+renderer.setAnimationLoop(() => {
+  if (tween) {
+    const t = Math.min(1, (performance.now() - tween.t0) / tween.dur), k = ease(t);
+    persp.position.lerpVectors(tween.from.pos, tween.to.pos, k);
+    controls.target.lerpVectors(tween.from.target, tween.to.target, k);
+    if (t === 1) { tween = null; if (view === 'orbit') controls.autoRotate = true; }
+  }
+  if (walk.on) walk.update(); else controls.update();
+  updateCutaway();
+  activeCam.updateMatrixWorld();
+  const now = performance.now();
+  stepCurtain(Math.min(0.05, (now - (stepCurtain.last ?? now)) / 1000));
+  stepCurtain.last = now;
+  const moved = !matNear(lastView, activeCam.matrixWorld) || !matNear(lastProj, activeCam.projectionMatrix);
+  if (!moved && !needFrame && now > dirtyUntil) { lastFrame = now; return; }   // ภาพนิ่ง — ไม่ต้องวาด
+  needFrame = false;
+  lastView.copy(activeCam.matrixWorld);
+  lastProj.copy(activeCam.projectionMatrix);
+  adaptQuality(now);
+  renderer.render(scene, activeCam);
+  labelRenderer.render(scene, activeCam);
+});
+window.DreamRoom = { ROOM, FIXED, CATALOG, furniture, rebuild, setView, setLight, exportPNG, renderer, scene, camera: persp, controls };
+</script>
+</body>
+</html>
