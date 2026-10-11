@@ -384,8 +384,9 @@ const STATIC = [
 const CATALOG = {
   desk160:    { name: 'โต๊ะคอม 160×60',       w: 1.60, d: 0.60, h: 0.75, color: '#f1f1ef', group: 'mine' },
   desk:       { name: 'โต๊ะคอม 120×60',       w: 1.20, d: 0.60, h: 0.75, color: '#f1f1ef', group: 'mine' },
-  chair:      { name: 'เก้าอี้ทำงาน',          w: 0.55, d: 0.55, h: 0.90, color: '#1f2023', group: 'mine' },
+  ergochair:  { name: 'เก้าอี้ทำงาน Bewell',   w: 0.68, d: 0.68, h: 1.30, color: '#151618', group: 'mine' },   // ขนาดประมาณ (ไม่พบสเปกรุ่น)
   fridge:     { name: 'ตู้เย็นเล็ก',           w: 0.50, d: 0.55, h: 0.85, color: '#2a2b2e', group: 'mine' },
+  purifier:   { name: 'เครื่องฟอกอากาศ Mijia 6', w: 0.25, d: 0.25, h: 0.555, color: '#f4f4f2', group: 'mine' },  // 250×250×555 มม. (สเปก)
   asus:       { name: 'จอ ASUS PG32UCDM + แขน', w: 0.72, d: 0.24, h: 0.56, color: '#1b1c1f', group: 'mine', top: true },
   xiaomi:     { name: 'จอ Xiaomi G27 แนวตั้ง', w: 0.38, d: 0.20, h: 0.70, color: '#1b1c1f', group: 'mine', top: true },
   mac:        { name: 'MacBook Air M5',      w: 0.31, d: 0.26, h: 0.22, color: '#2d3542', group: 'mine', top: true },
@@ -946,7 +947,7 @@ const ceiling = new THREE.Group();
 }
 
 { // ระเบียง X bath.x1–W (จากวิดีโอ): พื้นกระเบื้องเทาเงา · ขอบปูนเตี้ย + ราวเหล็กซี่ตั้งสีดำ · ราวตากผ้าใต้ฝ้า
-  // ผนังข้างฝั่งห้องน้ำมีประตูไม้สีน้ำตาล (ลูกบิด + เกล็ดระบายอากาศด้านบน) — ไม่แน่ใจว่าเปิดไปไหน (ช่องท่อ?)
+  // ผนังข้างฝั่งห้องน้ำทาสีน้ำตาล (ไม่ใช่ประตู — user ยืนยัน) มีหน้าต่างบานกระทุ้งด้านบน
   const x0 = B.x1, x1 = W, z0 = D + T, z1 = BALCONY_Z1, fy = -0.03, cx = (x0 + x1) / 2;
   const floorTex = canvasTexture(512, (g, S) => {
     const r = rand(21);
@@ -985,15 +986,24 @@ const ceiling = new THREE.Group();
   beam.position.set(cx, H - 0.15, z1 - 0.12);
   ceiling.add(beam);
 
-  // ประตูไม้สีน้ำตาลบนผนังข้างฝั่งห้องน้ำ (หันเข้าระเบียง)
-  const brown = new THREE.MeshStandardMaterial({ color: 0x6b4a3a, roughness: 0.6 });
-  const dz0 = z0 + 0.1, dz1 = z0 + 0.78;
-  scene.add(box(brown, x0, x0 + 0.035, fy, 2.0, dz0, dz1));
-  scene.add(box(MAT.doorFrame, x0, x0 + 0.045, 2.0, 2.04, dz0 - 0.03, dz1 + 0.03));
-  for (const [a, b] of [[dz0 - 0.03, dz0], [dz1, dz1 + 0.03]]) scene.add(box(MAT.doorFrame, x0, x0 + 0.045, fy, 2.04, a, b));
-  scene.add(box(new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.3, metalness: 0.7 }), x0 + 0.035, x0 + 0.08, 1.0, 1.04, dz1 - 0.09, dz1 - 0.05));
-  scene.add(box(brown, x0, x0 + 0.03, 2.08, 2.45, dz0, dz1));                                           // เกล็ดระบายอากาศ
-  for (let y = 2.12; y < 2.43; y += 0.05) scene.add(box(MAT.doorFrame, x0 + 0.03, x0 + 0.04, y, y + 0.015, dz0 + 0.03, dz1 - 0.03, { cast: false }));
+  // ผนังข้างระเบียงฝั่งห้องน้ำ: ทาสีน้ำตาล (user ยืนยัน — ไม่ใช่ประตู) · ตะขอทองเหลือง · ช่องหน้าต่างบานกระทุ้งด้านบน (น่าจะเป็นหน้าต่างห้องน้ำ)
+  const brown = new THREE.MeshStandardMaterial({ color: 0x7a5a4c, roughness: 0.75 });
+  scene.add(box(brown, x0, x0 + 0.006, fy, H, z0, z1 - 0.12, { cast: false }));
+  scene.add(box(new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.3, metalness: 0.7 }), x0, x0 + 0.05, 1.0, 1.03, z0 + 0.55, z0 + 0.58));
+  { // หน้าต่าง: วงกบเทาอ่อน + บานกระทุ้งบานพับบนเปิดออกมาทางระเบียง
+    const wz0 = z0 + 0.06, wz1 = z0 + 0.52, wy0 = 1.98, wy1 = 2.42, fr = new THREE.MeshStandardMaterial({ color: 0xd9dbdc, roughness: 0.4, metalness: 0.2 });
+    scene.add(box(new THREE.MeshStandardMaterial({ color: 0x2a2d31, roughness: 0.3 }), x0, x0 + 0.008, wy0, wy1, wz0, wz1, { cast: false }));
+    for (const [a, b, c, d] of [[wy0, wy0 + 0.03, wz0, wz1], [wy1 - 0.03, wy1, wz0, wz1], [wy0, wy1, wz0, wz0 + 0.03], [wy0, wy1, wz1 - 0.03, wz1]]) scene.add(box(fr, x0, x0 + 0.03, a, b, c, d));
+    const sash = new THREE.Group();
+    sash.position.set(x0 + 0.03, wy1 - 0.03, 0);
+    sash.rotation.z = deg(28);                                                                          // ขอบล่างกระทุ้งออกมาทาง +X
+    const sh = wy1 - wy0 - 0.06;
+    for (const [a, b, c, d] of [[-sh, -sh + 0.03, wz0 + 0.03, wz1 - 0.03], [-0.03, 0, wz0 + 0.03, wz1 - 0.03], [-sh, 0, wz0 + 0.03, wz0 + 0.06], [-sh, 0, wz1 - 0.06, wz1 - 0.03]]) sash.add(box(fr, 0, 0.025, a, b, c, d));
+    const pane = box(MAT.glass, 0.026, 0.03, -sh + 0.03, -0.03, wz0 + 0.06, wz1 - 0.06, { cast: false, receive: false });
+    pane.renderOrder = 2;
+    sash.add(pane);
+    scene.add(sash);
+  }
 
   // ราวตากผ้าสแตนเลส 2 เส้นคาดใต้ฝ้า
   for (const z of [z0 + 0.3, z1 - 0.3]) {
@@ -1212,6 +1222,25 @@ function gearArm(g, m, bx, bz, top, hx, hy, hz) {
   gearBar(g, m, j1, j2, 0.015);
   gearBar(g, m, j2, hd, 0.013);
   g.add(box(m, hx - 0.05, hx + 0.05, hy - 0.05, hy + 0.05, hz, hz + 0.01));
+}
+// สี่เหลี่ยมมุมมนกึ่งกลาง (0, 0) บนระนาบ XY
+function roundedRect(w, d, r) {
+  const s = new THREE.Shape(), x = w / 2, y = d / 2;
+  s.moveTo(-x + r, -y); s.lineTo(x - r, -y); s.quadraticCurveTo(x, -y, x, -y + r);
+  s.lineTo(x, y - r); s.quadraticCurveTo(x, y, x - r, y);
+  s.lineTo(-x + r, y); s.quadraticCurveTo(-x, y, -x, y - r);
+  s.lineTo(-x, -y + r); s.quadraticCurveTo(-x, -y, -x + r, -y);
+  return s;
+}
+// แผ่นนุ่มมุมมนขอบลบ (เบาะ / ที่วางแขน) กว้าง w (X) ลึก d (Z) หนา t · ฐานที่ y = 0
+function softSlab(w, d, t, r, m) {
+  const b = Math.min(0.02, t / 3);
+  const geo = new THREE.ExtrudeGeometry(roundedRect(w - 2 * b, d - 2 * b, Math.max(0.005, r - b)),
+    { depth: t - 2 * b, bevelEnabled: true, bevelThickness: b, bevelSize: b, bevelSegments: 3, curveSegments: 6 }).rotateX(-Math.PI / 2);
+  geo.translate(0, b, 0);
+  const mesh = new THREE.Mesh(geo, m);
+  mesh.castShadow = mesh.receiveShadow = true;
+  return mesh;
 }
 // ฝาโน้ตบุ๊กพับที่ขอบหลัง (+Z) เปิดทำมุม angle · จออยู่ด้านในฝา
 function gearLid(parent, m, BW, BD, BT, LT, angle) {
@@ -1491,6 +1520,123 @@ const BUILD = {
     mouse.position.set(-0.16, 0.004, 0.01);
     mouse.castShadow = true;
     g.add(mouse);
+    return g;
+  },
+  ergochair(f) {  // เก้าอี้ Bewell (ตามรูป): พนักตาข่ายดำทรง S + ซัพพอร์ตหลังล่าง · หมอนรองหัวโค้ง · ที่วางแขนตัว T ปรับได้ · เบาะผ้าดำ · ขา 5 แฉกไนลอนดำ + ล้อ
+    const g = new THREE.Group();
+    const blk = mat('#151618', 0.55, 0.1), nylon = mat('#1d1e20', 0.45, 0.2), fabric = mat('#17181a', 0.95), chrome = mat('#cfd2d6', 0.2, 0.9);
+    const meshMat = new THREE.MeshStandardMaterial({ color: 0x26272a, roughness: 0.85, side: THREE.DoubleSide });
+    // ฐาน 5 แฉก + ล้อ + แกนโช้ค
+    const R = 0.3;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2, x = Math.cos(a) * R, z = Math.sin(a) * R;
+      gearBar(g, nylon, new V(0, 0.11, 0), new V(x, 0.075, z), 0.02);
+      g.add(box(nylon, x - 0.018, x + 0.018, 0.05, 0.08, z - 0.018, z + 0.018));
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.03, 16), blk);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.rotation.y = a;
+      wheel.position.set(x * 1.06, 0.028, z * 1.06);
+      wheel.castShadow = true;
+      g.add(wheel);
+    }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.06, 20), nylon);
+    hub.position.y = 0.11;
+    const cover = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.04, 0.2, 20), blk);
+    cover.position.y = 0.24;
+    const lift = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.1, 16), chrome);
+    lift.position.y = 0.38;
+    for (const m of [hub, cover, lift]) { m.castShadow = true; g.add(m); }
+    g.add(box(blk, -0.13, 0.13, 0.42, 0.45, -0.12, 0.14));                                   // กลไกใต้เบาะ
+    g.add(box(blk, 0.13, 0.17, 0.425, 0.44, -0.04, -0.02));                                    // ก้านปรับ
+    // เบาะ: หนานุ่ม ขอบหน้าโค้งลง
+    const seat = softSlab(0.52, 0.5, 0.08, 0.09, fabric);
+    seat.position.set(0, 0.45, -0.02);
+    g.add(seat);
+    // พนักพิง: โครงทรง S (เอวคอด ไหล่บาน ปีกล่างบาน) + ตาข่าย · เอนหลัง 10°
+    const back = new THREE.Group();
+    back.position.set(0, 0.53, 0.24);
+    back.rotation.x = deg(10);
+    g.add(back);
+    const half = [[0.2, 0], [0.235, 0.083], [0.205, 0.193], [0.2, 0.33], [0.235, 0.48], [0.225, 0.552], [0.14, 0.584], [0, 0.593]];
+    const pts = half.concat(half.slice(0, -1).reverse().map(([x, y]) => [-x, y]));
+    const outline = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+    const panel = new THREE.Mesh(new THREE.ShapeGeometry(outline, 12), meshMat);
+    panel.castShadow = true;
+    back.add(panel);
+    const loop = new THREE.CatmullRomCurve3(pts.map(([x, y]) => new V(x, y, 0)), true);
+    const frame = new THREE.Mesh(new THREE.TubeGeometry(loop, 80, 0.014, 8, true), blk);
+    frame.castShadow = true;
+    back.add(frame);
+    back.add(box(mat('#2a2c30', 0.6), -0.16, 0.16, 0.1, 0.22, 0.012, 0.03));                   // ซัพพอร์ตหลังล่าง (ร่องแนวตั้ง)
+    for (let x = -0.14; x <= 0.141; x += 0.028) back.add(box(blk, x - 0.004, x + 0.004, 0.105, 0.215, 0.03, 0.034, { cast: false }));
+    gearBar(g, blk, new V(0, 0.44, 0.13), new V(0, 0.57, 0.26), 0.022);                          // ก้านพนักต่อกลไก
+    // หมอนรองหัว: ขาจับพลาสติกด้านหลัง + หมอนโค้งโอบ
+    back.add(box(blk, -0.06, 0.06, 0.53, 0.7, 0.03, 0.05));
+    const pillowGeo = new THREE.BoxGeometry(0.33, 0.13, 0.06, 16, 1, 1);
+    const pp = pillowGeo.attributes.position;
+    for (let i = 0; i < pp.count; i++) pp.setZ(i, pp.getZ(i) - (pp.getX(i) / 0.165) ** 2 * 0.04);
+    pillowGeo.computeVertexNormals();
+    const pillow = new THREE.Mesh(pillowGeo, fabric);
+    pillow.position.set(0, 0.71, 0.0);
+    pillow.castShadow = true;
+    back.add(pillow);
+    // ที่วางแขน 4D: ก้านจากใต้เบาะ + แหวนโครม + แผ่นวางแขน
+    for (const s of [-1, 1]) {
+      g.add(box(blk, s > 0 ? 0.1 : -0.29, s > 0 ? 0.29 : -0.1, 0.415, 0.44, -0.02, 0.06));
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 0.24, 14), blk);
+      post.position.set(s * 0.28, 0.55, 0.03);
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.012, 14), chrome);
+      ring.position.set(s * 0.28, 0.63, 0.03);
+      post.castShadow = true;
+      g.add(post, ring);
+      const pad = softSlab(0.085, 0.26, 0.03, 0.025, blk);
+      pad.position.set(s * 0.28, 0.67, -0.03);
+      g.add(pad);
+    }
+    g.add(box(mat('#2fb3aa', 0.6), 0.262, 0.266, 0.47, 0.5, 0.1, 0.13, { cast: false }));     // ป้าย bewell สีเขียวน้ำทะเล
+    return g;
+  },
+  purifier(f) {   // เครื่องฟอกอากาศ Mijia Smart Air Purifier 6 (250×250×555 มม.): ทรงเหลี่ยมมุมมน สีขาว · ครึ่งล่างรูตะแกรงรอบตัว · บนเป็นช่องลมใบพัดซี่รัศมี · จอกลมด้านหน้า
+    const g = new THREE.Group(), s = f.w, H = f.h, r = 0.035, base = 0.025;
+    const white = mat(f.color, 0.45), gray = mat('#6d7075', 0.4, 0.3);
+    g.add(box(gray, -s / 2 + 0.02, s / 2 - 0.02, 0, base, -s / 2 + 0.02, s / 2 - 0.02));          // ฐานเทาเข้ม
+    const body = new THREE.Mesh(new THREE.ExtrudeGeometry(roundedRect(s, s, r), { depth: H - base, bevelEnabled: false, curveSegments: 6 }).rotateX(-Math.PI / 2), white);
+    body.position.y = base;
+    body.castShadow = body.receiveShadow = true;
+    g.add(body);
+    const grille = canvasTexture(256, (c, S) => {                                                 // รูตะแกรง 1 แผ่น = 6 × 6 ซม.
+      c.fillStyle = '#f4f4f2'; c.fillRect(0, 0, S, S);
+      c.fillStyle = '#8f9399';
+      for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { c.beginPath(); c.arc((i + 0.5 + (j % 2) * 0.5) * S / 8, (j + 0.5) * S / 8, S / 40, 0, 7); c.fill(); }
+    }, (s - 2 * r) / 0.06, (H * 0.55) / 0.06);
+    const gm = new THREE.MeshStandardMaterial({ map: grille, roughness: 0.5 });
+    for (let k = 0; k < 4; k++) {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(s - 2 * r, H * 0.55), gm);
+      const a = (k * Math.PI) / 2;
+      p.position.set(Math.sin(a) * (s / 2 + 0.001), base + 0.03 + H * 0.275, Math.cos(a) * (s / 2 + 0.001));
+      p.rotation.y = a;
+      g.add(p);
+    }
+    const fan = canvasTexture(256, (c, S) => {                                                    // ช่องลมด้านบน: ซี่รัศมี + ดุมกลาง
+      c.fillStyle = '#d9dadc'; c.fillRect(0, 0, S, S);
+      c.fillStyle = '#55595e'; c.beginPath(); c.arc(S / 2, S / 2, S * 0.47, 0, 7); c.fill();
+      c.strokeStyle = '#c8cacd'; c.lineWidth = 3;
+      for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2; c.beginPath(); c.moveTo(S / 2 + Math.cos(a) * S * 0.12, S / 2 + Math.sin(a) * S * 0.12); c.lineTo(S / 2 + Math.cos(a + 0.25) * S * 0.47, S / 2 + Math.sin(a + 0.25) * S * 0.47); c.stroke(); }
+      c.fillStyle = '#e6e7e9'; c.beginPath(); c.arc(S / 2, S / 2, S * 0.12, 0, 7); c.fill();
+    }, 1, 1);
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(s - 0.03, s - 0.03), new THREE.MeshStandardMaterial({ map: fan, roughness: 0.6 }));
+    top.rotation.x = -Math.PI / 2;
+    top.position.y = H + 0.001;
+    g.add(top);
+    const disp = canvasTexture(128, (c, S) => {                                                   // จอกลม แสดงค่า PM 012
+      c.fillStyle = '#0b0c0e'; c.beginPath(); c.arc(S / 2, S / 2, S / 2, 0, 7); c.fill();
+      c.fillStyle = '#f2f2f2'; c.font = '700 40px system-ui, sans-serif'; c.textAlign = 'center'; c.fillText('012', S / 2 + 6, S / 2 + 12);
+      c.fillStyle = '#7bd88f'; c.fillRect(S * 0.3, S * 0.68, S * 0.4, 5);
+    }, 1, 1);
+    const screen = new THREE.Mesh(new THREE.CircleGeometry(0.036, 32), new THREE.MeshBasicMaterial({ map: disp, toneMapped: false }));
+    screen.rotation.y = Math.PI;
+    screen.position.set(0, H - 0.15, -s / 2 - 0.002);
+    g.add(screen);
     return g;
   },
   bin(f) {
