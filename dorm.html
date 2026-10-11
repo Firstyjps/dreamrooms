@@ -2768,8 +2768,6 @@ bShare.addEventListener('click', async () => {
     window.prompt('คัดลอกลิงก์นี้ส่งให้เพื่อน', url);       // บางเบราว์เซอร์ไม่ให้เขียนคลิปบอร์ด
   }
 });
-syncShareBtn();
-if (sharedView) setTimeout(() => toast('กำลังดู layout ที่แชร์มา — แก้ได้แต่ไม่บันทึกทับของคุณ'), 600);
 
 const bClear = document.getElementById('bClear');
 let clearTimer;
@@ -3066,6 +3064,8 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, activeCam);
   labelRenderer.render(scene, activeCam);
 });
+syncShareBtn();                                             // หลังโหลด layout (รู้แล้วว่าเปิดจากลิงก์แชร์หรือไม่)
+if (sharedView) setTimeout(() => toast('กำลังดู layout ที่แชร์มา — แก้ได้แต่ไม่บันทึกทับของคุณ'), 600);
 Sync.init();
 window.DreamRoom = { Sync, shareUrl, ROOM, FIXED, CATALOG, furniture, rebuild, setView, setLight, exportPNG, renderer, scene, camera: persp, controls };
 </script>
