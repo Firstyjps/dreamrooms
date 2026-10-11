@@ -202,6 +202,13 @@
     white-space: nowrap; font-variant-numeric: tabular-nums;
   }
 
+  .roomlink {
+    display: block; text-align: center; padding: 7px 6px; font-size: 13px; text-decoration: none;
+    color: var(--ink); background: var(--btn); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .roomlink:hover { border-color: var(--accent); }
+  #panel.mini .roomlink-sec { display: none; }
+
   @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
 
   @media (max-width: 640px) {
@@ -256,6 +263,10 @@
 
   <section>
     <button type="button" id="bStudio" style="width:100%; padding:9px 6px; font-size:14px; font-weight:600; background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink)">🖥️ เข้าห้องเปล่า — จัดโต๊ะคอมอย่างเดียว</button>
+  </section>
+
+  <section class="roomlink-sec">
+    <a class="roomlink" href="./dorm.html">🏠 หอพักใหม่ 24 ตร.ม. →</a>
   </section>
 
   <section>
