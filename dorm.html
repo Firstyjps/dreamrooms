@@ -2818,7 +2818,16 @@ addEventListener('resize', () => {
 //   ส่งเฉพาะชิ้นที่เปลี่ยน (เทียบกับค่าที่ส่ง/รับล่าสุด) · ระหว่างลากส่งทุก ~80 ms · ชิ้นที่ตัวเองกำลังลากไม่รับค่าจากเซิร์ฟเวอร์ทับ
 //   รหัสห้องสุ่ม 10 ตัว = รู้ลิงก์ถึงเข้าได้ (กฎฐานข้อมูลไม่ให้ไล่ดูรายชื่อห้อง)
 // =====================================================================
-const FIREBASE_CONFIG = null;   // ← ใส่ firebaseConfig จาก Firebase console (Project settings → Your apps → Web app) · null = ปิดฟีเจอร์ห้องร่วม
+// firebaseConfig ของโปรเจกต์ Firebase "dreamrooms" (ไม่ใช่รหัสลับ — สิทธิ์คุมด้วย Rules: rooms/$room อ่าน/เขียนได้เมื่อรู้รหัสห้อง ≥ 6 ตัว, ไล่ดูรายชื่อห้องไม่ได้) · ตั้งเป็น null = ปิดห้องร่วม
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyAOlCCa1-qYYHWYZY80Mj-opVChwyzMsBQ',
+  authDomain: 'dreamrooms.firebaseapp.com',
+  databaseURL: 'https://dreamrooms-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'dreamrooms',
+  storageBucket: 'dreamrooms.firebasestorage.app',
+  messagingSenderId: '642846809165',
+  appId: '1:642846809165:web:14c1e228a9207eb439d004',
+};
 const ROOM_KEY = 'dreamrooms.dorm.room';
 const Sync = (() => {
   const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
