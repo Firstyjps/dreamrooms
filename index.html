@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DreamRooms</title>
+<script>
+  // หน้าเริ่มต้นของเว็บ = หอพักใหม่ 24 ตร.ม. (dorm.html) · หน้านี้ (ห้อง The Four Lights) เปิดด้วย ?room
+  if (!/[?&]room\b/.test(location.search)) location.replace('dorm.html' + location.hash);
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
@@ -189,7 +193,6 @@
     border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 6px; padding: 1px 7px;
     white-space: nowrap;
   }
-  body.studio #more > section:nth-child(-n+2), body.studio #more > .files, body.studio #light { display: none; }   /* ห้องเปล่า: ซ่อนเมนูเฟอร์นิเจอร์ของห้องจริง */
   .plab {
     font: 500 10.5px "IBM Plex Sans Thai", system-ui, sans-serif;
     color: #fff; background: rgba(20, 24, 30, 0.82); border: 1px solid rgba(255, 255, 255, 0.35);
@@ -260,10 +263,6 @@
       <button id="more-btn" type="button" aria-expanded="false" aria-controls="more">เมนู</button>
     </div>
   </div>
-
-  <section>
-    <button type="button" id="bStudio" style="width:100%; padding:9px 6px; font-size:14px; font-weight:600; background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink)">🖥️ เข้าห้องเปล่า — จัดโต๊ะคอมอย่างเดียว</button>
-  </section>
 
   <section class="roomlink-sec">
     <a class="roomlink" href="./dorm.html">🏠 หอพักใหม่ 24 ตร.ม. →</a>
@@ -3390,22 +3389,9 @@ document.getElementById('fList').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-id]');
   if (b) select(b.dataset.id);
 });
-const bStudio = document.getElementById('bStudio');
-function setStudio(on) {
-  if (on) { DeskSetup.enterStudio(); setView('desk'); }
-  else { DeskSetup.exitStudio(); setView('desk'); }
-  bStudio.textContent = on ? '← ออกจากห้องเปล่า กลับห้องจริง' : '🖥️ เข้าห้องเปล่า — จัดโต๊ะคอมอย่างเดียว';
-  bStudio.classList.toggle('on', on);
-  document.body.classList.toggle('studio', on);
-}
-bStudio.addEventListener('click', () => setStudio(!DeskSetup.studio));
-// ค่าเริ่มต้น = ห้องเปล่าสำหรับจัดโต๊ะคอม · เปิดห้องจริงด้วย ?room
-if (!/[?&]room\b/.test(location.search)) setTimeout(() => setStudio(true), 300);
 document.getElementById('views').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');
-  if (!b) return;
-  if (DeskSetup.studio && b.dataset.view !== 'desk') { DeskSetup.exitStudio(); document.body.classList.remove('studio'); bStudio.textContent = '🖥️ เข้าห้องเปล่า — จัดโต๊ะคอมอย่างเดียว'; bStudio.classList.remove('on'); }
-  setView(b.dataset.view);
+  if (b) setView(b.dataset.view);
 });
 document.getElementById('light').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-mode]');

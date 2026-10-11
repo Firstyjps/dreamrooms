@@ -103,6 +103,8 @@
   .cat button { text-align: left; padding: 6px 9px; line-height: 1.3; }
   .cat button span { display: block; font-size: 13px; }
   .cat button small { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .catlabel { grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: var(--accent-ink); margin-top: 4px; }
+  .catlabel:first-child { margin-top: 0; }
 
   #fList { list-style: none; margin: 0; padding: 0; }
   #fList .item {
@@ -377,20 +379,29 @@ const STATIC = [
 // =====================================================================
 // เฟอร์นิเจอร์ — ขนาดมาตรฐาน (ม.) ด้านหน้าของชิ้นหันไปทาง -Z ที่ rotation 0
 // =====================================================================
+// group: 'mine' = ของของ user เอง (ยกไปหอใหม่) · 'room' = ของที่หอให้ (ตามวิดีโอ) · 'other' = ทั่วไป
+// top: true = ของวางบนโต๊ะ (ชนเฉพาะผนังและของบนโต๊ะด้วยกัน · ลอยขึ้นตามความสูงโต๊ะที่อยู่ใต้ · ลากโต๊ะแล้วของบนโต๊ะไปด้วย)
 const CATALOG = {
+  desk160:    { name: 'โต๊ะคอม 160×60',       w: 1.60, d: 0.60, h: 0.75, color: '#f1f1ef', group: 'mine' },
+  desk:       { name: 'โต๊ะคอม 120×60',       w: 1.20, d: 0.60, h: 0.75, color: '#f1f1ef', group: 'mine' },
+  chair:      { name: 'เก้าอี้ทำงาน',          w: 0.55, d: 0.55, h: 0.90, color: '#1f2023', group: 'mine' },
+  fridge:     { name: 'ตู้เย็นเล็ก',           w: 0.50, d: 0.55, h: 0.85, color: '#2a2b2e', group: 'mine' },
+  asus:       { name: 'จอ ASUS PG32UCDM + แขน', w: 0.72, d: 0.24, h: 0.56, color: '#1b1c1f', group: 'mine', top: true },
+  xiaomi:     { name: 'จอ Xiaomi G27 แนวตั้ง', w: 0.38, d: 0.20, h: 0.70, color: '#1b1c1f', group: 'mine', top: true },
+  mac:        { name: 'MacBook Air M5',      w: 0.31, d: 0.26, h: 0.22, color: '#2d3542', group: 'mine', top: true },
+  rog:        { name: 'ROG Strix G15 + ขาตั้ง', w: 0.36, d: 0.32, h: 0.42, color: '#3b3d48', group: 'mine', top: true },
+  kbset:      { name: 'คีย์บอร์ด + เมาส์ + แผ่นรอง', w: 0.49, d: 0.42, h: 0.04, color: '#1d1e22', group: 'mine', top: true },
   bed35:      { name: 'เตียง 3.5 ฟุต',        w: 1.12, d: 2.08, h: 0.95, color: '#1f1f21' },
   nightstand: { name: 'ตู้ข้างเตียง 2 ลิ้นชัก', w: 0.40, d: 0.40, h: 0.55, color: '#d6b78c' },
   glassdesk:  { name: 'โต๊ะกระจก 100×36',     w: 1.00, d: 0.36, h: 0.74, color: '#202124' },
   adde:       { name: 'เก้าอี้เหล็กดำ',        w: 0.39, d: 0.47, h: 0.77, color: '#1c1d1f' },
   wardrobe2:  { name: 'ตู้เสื้อผ้าไม้ + กระจก', w: 0.90, d: 0.55, h: 2.00, color: '#cfc1ab' },
   bin:        { name: 'ถังขยะ',               w: 0.24, d: 0.24, h: 0.32, color: '#5d6166' },
-  desk160:    { name: 'โต๊ะ 160×60',          w: 1.60, d: 0.60, h: 0.75, color: '#f1f1ef' },
-  desk:       { name: 'โต๊ะ 120×60',          w: 1.20, d: 0.60, h: 0.75, color: '#f1f1ef' },
-  chair:      { name: 'เก้าอี้ทำงาน',          w: 0.55, d: 0.55, h: 0.90, color: '#2b2d30' },
-  fridge:     { name: 'ตู้เย็นเล็ก',           w: 0.50, d: 0.55, h: 0.85, color: '#2a2b2e' },
-  rack:       { name: 'ราวแขวนผ้า',           w: 0.80, d: 0.45, h: 0.95, color: '#c9a06a' },
-  bed:        { name: 'เตียง 5 ฟุต',          w: 1.60, d: 2.10, h: 1.00, color: '#4a342a' },
+  rack:       { name: 'ราวแขวนผ้า',           w: 0.80, d: 0.45, h: 0.95, color: '#c9a06a', group: 'other' },
+  bed:        { name: 'เตียง 5 ฟุต',          w: 1.60, d: 2.10, h: 1.00, color: '#4a342a', group: 'other' },
 };
+for (const c of Object.values(CATALOG)) c.group ??= 'room';
+const SURFACES = new Set(['desk160', 'desk', 'desk100', 'glassdesk', 'nightstand', 'fridge']);   // ของบนโต๊ะวางบนชิ้นเหล่านี้ได้
 
 // การจัดตามวิดีโอ (+ รูปที่ user ยืนยัน): เตียงแนวขวาง หัวเตียงชนผนังขวา X=0 · ข้างเตียงชิดผนังห้องน้ำที่มีแอร์ · ปลายเตียงยื่นเลยมุมห้องน้ำเล็กน้อย
 // ตู้ข้างเตียงชิดผนังขวาอีกฝั่งของหัวเตียง · โต๊ะกระจก 2 ตัว + เก้าอี้ชิดผนังซ้ายถึงเสา
@@ -1181,6 +1192,37 @@ function buildDims() {
 const mat = (color, roughness = 0.8, metalness = 0) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
 const lighter = (hex, l) => new THREE.Color(hex).offsetHSL(0, 0, l);
 
+// ---------- ตัวช่วยชุดคอม ----------
+const SCREEN = new THREE.MeshStandardMaterial({ color: 0x0c1830, emissive: 0x16325e, emissiveIntensity: 0.35, roughness: 0.15 });
+function gearBar(g, m, a, b, r) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, a.distanceTo(b), 12), m);
+  mesh.position.copy(a).add(b).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new V(0, 1, 0), b.clone().sub(a).normalize());
+  mesh.castShadow = true;
+  g.add(mesh);
+}
+// แขนจอ: ฐานกลม (bx, bz) + เสาสูง top + ข้อต่อ 2 ท่อน ไปจับหลังจอที่ (hx, hy, hz)
+function gearArm(g, m, bx, bz, top, hx, hy, hz) {
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.012, 24), m);
+  disc.position.set(bx, 0.006, bz);
+  disc.castShadow = true;
+  g.add(disc);
+  const j1 = new V(bx, top, bz), hd = new V(hx, hy, hz + 0.02), j2 = new V((bx + hx) / 2 + 0.06, top + 0.02, Math.max(bz, hz) + 0.04);
+  gearBar(g, m, new V(bx, 0.012, bz), j1, 0.016);
+  gearBar(g, m, j1, j2, 0.015);
+  gearBar(g, m, j2, hd, 0.013);
+  g.add(box(m, hx - 0.05, hx + 0.05, hy - 0.05, hy + 0.05, hz, hz + 0.01));
+}
+// ฝาโน้ตบุ๊กพับที่ขอบหลัง (+Z) เปิดทำมุม angle · จออยู่ด้านในฝา
+function gearLid(parent, m, BW, BD, BT, LT, angle) {
+  const hinge = new THREE.Group();
+  hinge.position.set(0, BT, BD / 2);
+  hinge.rotation.x = angle;
+  hinge.add(box(m, -BW / 2, BW / 2, 0, LT, -BD, 0));
+  hinge.add(box(SCREEN, -BW / 2 + 0.008, BW / 2 - 0.008, -0.0008, 0, -BD + 0.01, -0.012, { cast: false }));
+  parent.add(hinge);
+}
+
 const BUILD = {
   bed(f) {
     const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2;
@@ -1381,6 +1423,76 @@ const BUILD = {
     g.add(box(mat('#8e9397', 0.3, 0.6), 0.035, 0.05, 0.9, 1.25, -hd - 0.025, -hd));
     return g;
   },
+  // ---------- ของฉัน: ชุดคอมบนโต๊ะ (แบบย่อจากชุดโต๊ะคอมในหน้าเดิม — ไม่มีสาย/พอร์ต) · ด้านหน้า (จอ/คนนั่ง) = -Z ----------
+  asus(f) {       // ASUS ROG PG32UCDM บนแขนจอดำ ฐานกลมด้านหลัง
+    const g = new THREE.Group(), black = mat('#1b1c1f', 0.55, 0.05), back = mat('#35383d', 0.5, 0.1), arm = mat('#18191b', 0.55, 0.3);
+    const PW = 0.717, PH = 0.418, cy = 0.11 + PH / 2 + 0.03;
+    g.add(box(black, -PW / 2, PW / 2, cy - PH / 2, cy + PH / 2, -0.03, -0.018));
+    g.add(box(SCREEN, -0.351, 0.351, cy - 0.199, cy + 0.199, -0.031, -0.03, { cast: false }));
+    g.add(box(back, -0.28, 0.28, cy - 0.135, cy + 0.135, -0.018, 0.012));
+    gearArm(g, arm, 0.30, 0.10, 0.30, 0, cy, 0.012);
+    return g;
+  },
+  xiaomi(f) {     // Xiaomi G27 แนวตั้ง บนแขนจอสีขาว
+    const g = new THREE.Group(), black = mat('#1b1c1f', 0.55, 0.05), back = mat('#35383d', 0.5, 0.1), arm = mat('#e9e8e3', 0.5, 0.1);
+    const PW = 0.362, PH = 0.614, cy = 0.05 + PH / 2;
+    g.add(box(black, -PW / 2, PW / 2, cy - PH / 2, cy + PH / 2, -0.025, -0.017));
+    g.add(box(SCREEN, -0.173, 0.173, cy - 0.301, cy + 0.301, -0.026, -0.025, { cast: false }));
+    g.add(box(back, -0.1, 0.1, cy - 0.2, cy + 0.2, -0.017, 0.005));
+    gearArm(g, arm, 0, 0.07, 0.30, 0, cy, 0.005);
+    return g;
+  },
+  mac(f) {        // MacBook Air 13" สี Midnight เปิดฝา
+    const g = new THREE.Group(), body = mat('#2d3542', 0.32, 0.75);
+    const BW = 0.304, BD = 0.215, BT = 0.0113;
+    g.add(box(body, -BW / 2, BW / 2, 0, BT, -BD / 2, BD / 2));
+    g.add(box(mat('#14171d', 0.6), -0.135, 0.135, BT, BT + 0.0008, -0.0, BD / 2 - 0.02, { cast: false }));        // แป้นพิมพ์
+    g.add(box(mat('#262b33', 0.4), -0.05, 0.05, BT, BT + 0.0008, -BD / 2 + 0.015, -0.015, { cast: false }));      // ทัชแพด
+    gearLid(g, body, BW, BD, BT, 0.0058, deg(105));
+    return g;
+  },
+  rog(f) {        // ROG Strix G15 บนถาด Ergonoz (เสาดำด้านหลัง · ถาดเอียง)
+    const g = new THREE.Group(), arm = mat('#18191b', 0.55, 0.3), body = mat('#3b3d48', 0.5, 0.35);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.22, 16), arm);
+    pole.position.set(0.05, 0.11, 0.12);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.012, 24), arm);
+    disc.position.set(0.05, 0.006, 0.12);
+    pole.castShadow = disc.castShadow = true;
+    g.add(pole, disc);
+    const tray = new THREE.Group();
+    tray.position.set(0, 0.16, 0);
+    tray.rotation.x = -deg(22);                                                                                   // ด้านหลังสูงกว่า
+    g.add(tray);
+    tray.add(box(mat('#131315', 0.6, 0.3), -0.17, 0.17, -0.003, 0, -0.15, 0.15));
+    const BW = 0.354, BD = 0.259, BT = 0.0225;
+    const lap = new THREE.Group();
+    lap.position.set(0, 0.0, -0.01);
+    tray.add(lap);
+    lap.add(box(body, -BW / 2, BW / 2, 0, BT, -BD / 2, BD / 2));
+    lap.add(box(mat('#17181b', 0.6), -0.165, 0.165, BT, BT + 0.0008, -0.01, BD / 2 - 0.015, { cast: false }));
+    gearLid(lap, body, BW, BD, BT, 0.009, deg(108));
+    return g;
+  },
+  kbset(f) {      // แผ่นรองเมาส์ Artisan Ninja FX XL + Wooting 60HE (คีย์แคปขาว/ดำ) + Razer Viper V3 Pro ขาว
+    const g = new THREE.Group(), hw = f.w / 2, hd = f.d / 2;
+    g.add(box(mat('#1d1e22', 0.9), -hw, hw, 0, 0.004, -hd, hd, { cast: false }));
+    const kx = 0.06, kz = 0.02, KW = 0.302, KD = 0.105;
+    g.add(box(mat('#141517', 0.5, 0.2), kx - KW / 2, kx + KW / 2, 0.004, 0.026, kz - KD / 2, kz + KD / 2));
+    const white = mat('#f1f0ec', 0.6), dark = mat('#2b2d31', 0.6), u = (KW - 0.012) / 14;
+    for (let r = 0; r < 5; r++) for (let i = 0; i < 14; i++) {
+      if (r === 4 && i > 7) continue;
+      const mod = i === 0 || i === 13 || r === 4;
+      const x0 = kx + KW / 2 - 0.006 - (i + 1) * u, z0 = kz + KD / 2 - 0.007 - (r + 1) * (KD - 0.014) / 5;
+      const wide = r === 4 && i === 3 ? 4 : 1;
+      g.add(box(mod ? dark : white, x0 - (wide - 1) * u + 0.0015, x0 + u - 0.0015, 0.026, 0.034, z0 + 0.0015, z0 + (KD - 0.014) / 5 - 0.0015, { cast: false }));
+    }
+    const mouse = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 12), mat('#f4f3ef', 0.45));
+    mouse.scale.set(0.063, 0.075, 0.127);
+    mouse.position.set(-0.16, 0.004, 0.01);
+    mouse.castShadow = true;
+    g.add(mouse);
+    return g;
+  },
   bin(f) {
     const g = new THREE.Group(), body = mat(f.color, 0.4, 0.3);
     body.side = THREE.DoubleSide;
@@ -1407,7 +1519,22 @@ function rectOf(f, rot = f.rotation, x = f.x, z = f.z) {
   return { x0: x - hx, x1: x + hx, z0: z - hz, z1: z + hz };
 }
 const overlap = (a, b) => a.x0 < b.x1 - TOL && a.x1 > b.x0 + TOL && a.z0 < b.z1 - TOL && a.z1 > b.z0 + TOL;
-const obstaclesFor = (id) => STATIC.concat(furniture.filter((f) => f.id !== id).map((f) => ({ name: f.name, ...rectOf(f) })));
+const isTop = (f) => !!(f && CATALOG[f.type]?.top);
+// ของบนพื้นชนกันเอง · ของบนโต๊ะชนกันเอง (สองชั้นไม่ชนกัน) · ทุกชิ้นชนผนัง/ห้องน้ำ/เสา
+const obstaclesFor = (id) => {
+  const top = isTop(furniture.find((f) => f.id === id));
+  return STATIC.concat(furniture.filter((f) => f.id !== id && isTop(f) === top).map((f) => ({ name: f.name, ...rectOf(f) })));
+};
+const contains = (r, x, z) => x > r.x0 + TOL && x < r.x1 - TOL && z > r.z0 + TOL && z < r.z1 - TOL;
+// ความสูงที่ของบนโต๊ะวางอยู่ = ผิวบนของโต๊ะ/ตู้ที่อยู่ใต้จุดกึ่งกลาง (ไม่มี = วางบนพื้น)
+function surfaceY(f) {
+  if (!isTop(f)) return 0;
+  let y = 0;
+  for (const g of furniture) if (SURFACES.has(g.type) && contains(rectOf(g), f.x, f.z)) y = Math.max(y, g.h);
+  return y;
+}
+// ของบนโต๊ะที่อยู่บนชิ้นนี้ (ใช้ตอนลาก/หมุนโต๊ะ ให้ของไปด้วย)
+const ridersOf = (f) => (isTop(f) || !SURFACES.has(f.type)) ? [] : furniture.filter((g) => isTop(g) && contains(rectOf(f), g.x, g.z));
 function collides(rect, id) {
   for (const o of obstaclesFor(id)) if (overlap(rect, o)) return o.name;
   return null;
@@ -1442,12 +1569,12 @@ function gaps(f) {
   return out;
 }
 // หาตำแหน่งว่างที่ใกล้ (cx, cz) ที่สุด บนกริด 5 ซม.
-function findSpot(f, rot, cx, cz, maxR = Infinity) {
+function findSpot(f, rot, cx, cz, maxR = Infinity, ok = null) {
   let best = null, bd = Infinity;
   for (let i = 0; i <= Math.round(W / 0.05); i++) for (let j = 0; j <= Math.round(D / 0.05); j++) {
     const x = i * 0.05, z = j * 0.05, dd = (x - cx) ** 2 + (z - cz) ** 2;
     if (dd >= bd || dd > maxR * maxR) continue;
-    if (!collides(rectOf(f, rot, x, z), f.id)) { bd = dd; best = { x: +x.toFixed(2), z: +z.toFixed(2) }; }
+    if (!collides(rectOf(f, rot, x, z), f.id) && (!ok || ok(x, z))) { bd = dd; best = { x: +x.toFixed(2), z: +z.toFixed(2) }; }
   }
   return best;
 }
@@ -1470,7 +1597,7 @@ const newId = () => 'f' + Date.now().toString(36) + Math.random().toString(36).s
 function place(f) {
   invalidate({ shadows: true });
   const o = objs.get(f.id);
-  if (o) { o.position.set(f.x, 0, f.z); o.rotation.y = deg(f.rotation || 0); }
+  if (o) { o.position.set(f.x, surfaceY(f), f.z); o.rotation.y = deg(f.rotation || 0); }
   const t = tags.get(f.id);
   if (t) t.position.set(f.x, 2.72, f.z);
 }
@@ -1526,7 +1653,7 @@ function updateSelection() {
   if (!f) { gapViz.forEach((g) => { g.bar.visible = g.label.visible = false; }); return; }
 
   const r = rectOf(f);
-  selBox.position.set(f.x, f.h / 2, f.z);
+  selBox.position.set(f.x, surfaceY(f) + f.h / 2, f.z);
   selBox.rotation.y = deg(f.rotation || 0);
   selBox.scale.set(f.w + 0.03, f.h + 0.03, f.d + 0.03);
   selFloor.position.set(f.x, 0.007, f.z);
@@ -1584,14 +1711,29 @@ function renderList() {
 function addItem(type) {
   const c = CATALOG[type];
   const f = { id: newId(), type, name: c.name, w: c.w, d: c.d, h: c.h, x: 0, z: 0, rotation: 0, color: c.color };
+  furniture.push(f);                                        // ใส่ก่อนหาที่ (การชนดูชั้นจาก type ของชิ้นนี้)
   let spot = null;
-  for (const rot of [0, 90]) {
-    spot = findSpot(f, rot, W / 2, D * 0.62);
-    if (spot) { f.rotation = rot; break; }
+  if (c.top) {                                              // ของบนโต๊ะ: หาที่ว่างบนโต๊ะ — โต๊ะของฉันก่อน
+    const desks = furniture.filter((g) => SURFACES.has(g.type) && g.type !== 'nightstand' && g.type !== 'fridge')
+      .sort((a, b) => (CATALOG[b.type]?.group === 'mine') - (CATALOG[a.type]?.group === 'mine'));
+    for (const d of desks) {                                // ชิดขอบหลังโต๊ะ (คีย์บอร์ดชิดขอบหน้า) · ทั้งชิ้นอยู่บนโต๊ะก่อน ไม่ได้ค่อยยอมให้ล้นขอบ
+      const r = rectOf(d), rot = d.rotation || 0, a = deg(rot);
+      const off = (type === 'kbset' ? -1 : 1) * Math.max(0, (d.d - c.d) / 2 - 0.03);
+      const tx = d.x + Math.sin(a) * off, tz = d.z + Math.cos(a) * off;
+      const within = (x, z) => { const q = rectOf(f, rot, x, z); return q.x0 >= r.x0 - 0.02 && q.x1 <= r.x1 + 0.02 && q.z0 >= r.z0 - 0.02 && q.z1 <= r.z1 + 0.02; };
+      const inRow = (x, z) => Math.abs((x - d.x) * Math.sin(a) + (z - d.z) * Math.cos(a) - off) < 0.06;   // เรียงเป็นแถวเดียวตามขอบโต๊ะ
+      const s = findSpot(f, rot, tx, tz, 1.0, (x, z) => within(x, z) && inRow(x, z))
+        || findSpot(f, rot, tx, tz, 1.0, within) || findSpot(f, rot, tx, tz, 0.8, (x, z) => contains(r, x, z));
+      if (s) { spot = s; f.rotation = rot; break; }
+    }
   }
-  if (!spot) { toast(`ไม่มีที่ว่างพอสำหรับ${c.name}`, true); return; }
+  for (const rot of [0, 90]) {
+    if (spot) break;
+    spot = findSpot(f, rot, W / 2, D * 0.62);
+    if (spot) f.rotation = rot;
+  }
+  if (!spot) { furniture.pop(); toast(`ไม่มีที่ว่างพอสำหรับ${c.name}`, true); return; }
   Object.assign(f, spot);
-  furniture.push(f);
   rebuild();
   select(f.id);
   toast(`เพิ่ม${c.name}แล้ว`);
@@ -1607,7 +1749,12 @@ function rotateSelected() {
     toast(`หมุนไม่ได้ จะชน${collides(rectOf(f, rot), f.id)}`, true);
     return;
   }
+  const riders = ridersOf(f), ox = f.x, oz = f.z;
   Object.assign(f, spot, { rotation: rot });
+  for (const g of riders) {                                 // หมุน 90° ทวนเข็ม: ออฟเซ็ต (dx, dz) → (dz, -dx)
+    const dx = g.x - ox, dz = g.z - oz;
+    Object.assign(g, { x: +(f.x + dz).toFixed(4), z: +(f.z - dx).toFixed(4), rotation: ((g.rotation || 0) + 90) % 360 });
+  }
   rebuild();
 }
 
@@ -1791,7 +1938,7 @@ const walk = (() => {
   const inside = (x, z) => WALKABLE.some((r) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1);
   function blocked(x, z) {
     for (const [px, pz] of [[x, z], [x - R, z], [x + R, z], [x, z - R], [x, z + R]]) if (!inside(px, pz)) return true;
-    const obs = FIXED_BLOCKS.concat(furniture.filter((f) => f.h > 0.25).map((f) => rectOf(f)));
+    const obs = FIXED_BLOCKS.concat(furniture.filter((f) => f.h > 0.25 && !isTop(f)).map((f) => rectOf(f)));
     return obs.some((o) => x > o.x0 - R && x < o.x1 + R && z > o.z0 - R && z < o.z1 + R);
   }
   const apply = () => { persp.position.set(pos.x, eyeY, pos.z); persp.rotation.set(pitch, yaw, 0, 'YXZ'); };
@@ -2056,7 +2203,8 @@ canvas.addEventListener('pointerdown', (e) => {
   tween = null;
   select(f.id);
   const p = floorPoint(e) || new V(f.x, 0, f.z);
-  drag = { id: f.id, x0: f.x, z0: f.z, px: p.x, pz: p.z, pointerId: e.pointerId, moved: false };
+  drag = { id: f.id, x0: f.x, z0: f.z, px: p.x, pz: p.z, pointerId: e.pointerId, moved: false,
+    riders: ridersOf(f).map((g) => ({ g, x0: g.x, z0: g.z })) };
   canvas.setPointerCapture(e.pointerId);
   canvas.style.cursor = 'grabbing';
 }, { capture: true });
@@ -2072,7 +2220,11 @@ canvas.addEventListener('pointermove', (e) => {
     const dz = sweep(rectOf(f), 'z', drag.z0 + snap(p.z - drag.pz) - f.z, obs);
     f.z += dz;
     f.x = +f.x.toFixed(4); f.z = +f.z.toFixed(4);
-    if (dx || dz) { drag.moved = true; place(f); updateSelection(); }
+    if (dx || dz) {
+      drag.moved = true;
+      for (const r of drag.riders) { r.g.x = +(r.x0 + f.x - drag.x0).toFixed(4); r.g.z = +(r.z0 + f.z - drag.z0).toFixed(4); place(r.g); }
+      place(f); updateSelection();
+    }
     return;
   }
   if (e.pointerType !== 'mouse') return;
@@ -2218,8 +2370,9 @@ function toast(msg, bad = false) {
   toastTimer = setTimeout(() => { toastEl.className = ''; }, 2400);
 }
 
-document.getElementById('cat').innerHTML = Object.entries(CATALOG).map(([type, c]) =>
-  `<button type="button" data-type="${type}"><span>${esc(c.name)}</span><small>${cm(c.w)}×${cm(c.d)} ซม.</small></button>`).join('');
+document.getElementById('cat').innerHTML = [['mine', 'ของฉัน'], ['room', 'ของที่หอให้ (ตามวิดีโอ)'], ['other', 'อื่น ๆ']].map(([grp, title]) =>
+  `<div class="catlabel">${title}</div>` + Object.entries(CATALOG).filter(([, c]) => c.group === grp).map(([type, c]) =>
+    `<button type="button" data-type="${type}"><span>${esc(c.name)}</span><small>${cm(c.w)}×${cm(c.d)} ซม.${c.top ? ' · บนโต๊ะ' : ''}</small></button>`).join('')).join('');
 document.getElementById('cat').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-type]');
   if (b) addItem(b.dataset.type);
