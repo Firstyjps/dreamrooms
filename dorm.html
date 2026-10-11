@@ -386,6 +386,7 @@ const CATALOG = {
   desk:       { name: 'โต๊ะคอม 120×60',       w: 1.20, d: 0.60, h: 0.75, color: '#f1f1ef', group: 'mine' },
   ergochair:  { name: 'เก้าอี้ทำงาน Bewell',   w: 0.68, d: 0.68, h: 1.30, color: '#151618', group: 'mine' },   // ขนาดประมาณ (ไม่พบสเปกรุ่น)
   fridge:     { name: 'ตู้เย็นเล็ก',           w: 0.50, d: 0.55, h: 0.85, color: '#2a2b2e', group: 'mine' },
+  fan:        { name: 'พัดลมตั้งพื้นสีชมพู 16"', w: 0.48, d: 0.40, h: 1.20, color: '#ec8db2', group: 'mine' },  // แบบเสาปรับสูง (ประมาณ)
   purifier:   { name: 'เครื่องฟอกอากาศ Mijia 6', w: 0.25, d: 0.25, h: 0.555, color: '#f4f4f2', group: 'mine' },  // 250×250×555 มม. (สเปก)
   asus:       { name: 'จอ ASUS PG32UCDM + แขน', w: 0.72, d: 0.24, h: 0.56, color: '#1b1c1f', group: 'mine', top: true },
   xiaomi:     { name: 'จอ Xiaomi G27 แนวตั้ง', w: 0.38, d: 0.20, h: 0.70, color: '#1b1c1f', group: 'mine', top: true },
@@ -396,7 +397,7 @@ const CATALOG = {
   nightstand: { name: 'ตู้ข้างเตียง 2 ลิ้นชัก', w: 0.40, d: 0.40, h: 0.55, color: '#d6b78c' },
   glassdesk:  { name: 'โต๊ะกระจก 100×36',     w: 1.00, d: 0.36, h: 0.74, color: '#202124' },
   adde:       { name: 'เก้าอี้เหล็กดำ',        w: 0.39, d: 0.47, h: 0.77, color: '#1c1d1f' },
-  wardrobe2:  { name: 'ตู้เสื้อผ้าไม้ + กระจก', w: 0.90, d: 0.55, h: 2.00, color: '#cfc1ab' },
+  wardrobe2:  { name: 'ตู้เสื้อผ้าไม้ + กระจก', w: 1.20, d: 0.60, h: 2.00, color: '#cfc1ab' },   // user: ใหญ่กว่า 90 ซม. · ห่างสวิตช์ข้างประตูแค่ ~40 ซม. (รูปจากคลิป)
   bin:        { name: 'ถังขยะ',               w: 0.24, d: 0.24, h: 0.32, color: '#5d6166' },
   rack:       { name: 'ราวแขวนผ้า',           w: 0.80, d: 0.45, h: 0.95, color: '#c9a06a', group: 'other' },
   bed:        { name: 'เตียง 5 ฟุต',          w: 1.60, d: 2.10, h: 1.00, color: '#4a342a', group: 'other' },
@@ -415,7 +416,7 @@ const DEFAULT_LAYOUT = [
   { type: 'adde',       x: W - 0.62,    z: 4.65, rotation: 270 },
   { type: 'adde',       x: W - 0.62,    z: 3.65, rotation: 270 },
   { type: 'bin',        x: W - 0.16,    z: 5.30, rotation: 0 },
-  { type: 'wardrobe2',  x: 0.50,        z: 0.275, rotation: 180 },
+  { type: 'wardrobe2',  x: 0.87,        z: 0.30, rotation: 180 },   // X 0.27–1.47 · ขอบตู้ห่างสวิตช์ไฟ (X 1.87) ~40 ซม.
 ];
 
 // {id, type, name, w, d, h, x, z, rotation, color} — x, z = กึ่งกลางบนพื้น · w ตาม X · d ตาม Z · rotation องศา
@@ -1596,6 +1597,48 @@ const BUILD = {
     g.add(box(mat('#2fb3aa', 0.6), 0.262, 0.266, 0.47, 0.5, 0.1, 0.13, { cast: false }));     // ป้าย bewell สีเขียวน้ำทะเล
     return g;
   },
+  fan(f) {        // พัดลมตั้งพื้น 16" สีชมพู: ฐานกลม · เสาปรับสูง · หัวมอเตอร์ · กะโหลกตะแกรงดำขอบชมพู · ใบพัด 3 ใบ (ลมเป่าไปทาง -Z)
+    const g = new THREE.Group(), pink = mat(f.color, 0.4), black = mat('#1b1c1f', 0.5, 0.3), white = mat('#f3f1ee', 0.4);
+    const cy = f.h - 0.25, cz = -0.03, R = 0.235;
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.05, 32), pink);
+    base.position.y = 0.025;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, cy - 0.12, 14), white);
+    pole.position.set(0, 0.05 + (cy - 0.12) / 2, 0.06);
+    const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.065, 0.17, 24), pink);
+    motor.rotation.x = Math.PI / 2;
+    motor.position.set(0, cy, 0.1);
+    g.add(box(pink, -0.03, 0.03, cy - 0.12, cy - 0.06, 0.04, 0.09));                                   // คอปรับก้มเงย
+    for (const m of [base, pole, motor]) { m.castShadow = true; g.add(m); }
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 0.014, 10, 48), pink);
+    rim.position.set(0, cy, cz);
+    rim.castShadow = true;
+    g.add(rim);
+    for (const [z, sgn] of [[cz - 0.045, 1], [cz + 0.05, -1]]) {                                       // ตะแกรงหน้า/หลัง: ซี่รัศมี + วงแหวน
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2, bar = new THREE.Mesh(new THREE.BoxGeometry(0.004, R - 0.02, 0.004), black);
+        bar.position.set(Math.sin(a) * (R / 2 + 0.01), cy + Math.cos(a) * (R / 2 + 0.01), z);
+        bar.rotation.z = -a;
+        g.add(bar);
+      }
+      for (const r of [0.08, 0.15, 0.21]) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.003, 6, 40), black);
+        ring.position.set(0, cy, z + sgn * 0.004);
+        g.add(ring);
+      }
+    }
+    const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.012, 24), pink);
+    badge.rotation.x = Math.PI / 2;
+    badge.position.set(0, cy, cz - 0.052);
+    g.add(badge);
+    for (let k = 0; k < 3; k++) {                                                                    // ใบพัด
+      const blade = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16, -0.45, 0.9), new THREE.MeshStandardMaterial({ color: 0xf2b7cc, roughness: 0.4, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+      blade.position.set(0, cy, cz);
+      blade.rotation.z = (k / 3) * Math.PI * 2;
+      blade.geometry.translate(0.04, 0, 0);
+      g.add(blade);
+    }
+    return g;
+  },
   purifier(f) {   // เครื่องฟอกอากาศ Mijia Smart Air Purifier 6 (250×250×555 มม.): ทรงเหลี่ยมมุมมน สีขาว · ครึ่งล่างรูตะแกรงรอบตัว · บนเป็นช่องลมใบพัดซี่รัศมี · จอกลมด้านหน้า
     const g = new THREE.Group(), s = f.w, H = f.h, r = 0.035, base = 0.025;
     const white = mat(f.color, 0.45), gray = mat('#6d7075', 0.4, 0.3);
@@ -2665,6 +2708,12 @@ let hadSaved = false;
 try {
   const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
   if (saved) { hadSaved = true; furniture.push(...parseLayout(saved)); }
+  for (const f of furniture) {                     // ย้ายข้อมูลเก่า: ตู้เสื้อผ้าเดิม 90×55 → 120×60 (ถ้ายังอยู่ที่เดิมตั้งต้น ย้ายไปตำแหน่งใหม่)
+    if (f.type !== 'wardrobe2' || f.w !== 0.9) continue;
+    const c = CATALOG.wardrobe2, d = DEFAULT_LAYOUT.find((q) => q.type === 'wardrobe2');
+    const atOld = Math.abs(f.x - 0.5) < 0.01 && Math.abs(f.z - 0.275) < 0.01 && f.rotation === 180;
+    Object.assign(f, { w: c.w, d: c.d, h: c.h }, atOld ? { x: d.x, z: d.z } : {});
+  }
 } catch { /* ไม่มี layout เก่า หรืออ่านไม่ได้ */ }
 if (!hadSaved) furniture.push(...defaultLayout());   // เปิดครั้งแรก = จัดตามวิดีโอ
 // ---------- รวม mesh ที่ไม่ขยับ: ห้องน้ำ ระเบียง บิวท์อิน ฯลฯ ที่เป็นลูกตรงของ scene → รวมตาม material ----------
