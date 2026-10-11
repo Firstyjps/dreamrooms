@@ -386,7 +386,7 @@ const CATALOG = {
   desk:       { name: 'โต๊ะคอม 120×60',       w: 1.20, d: 0.60, h: 0.75, color: '#f1f1ef', group: 'mine' },
   ergochair:  { name: 'เก้าอี้ทำงาน Bewell',   w: 0.68, d: 0.68, h: 1.30, color: '#151618', group: 'mine' },   // ขนาดประมาณ (ไม่พบสเปกรุ่น)
   fridge:     { name: 'ตู้เย็นเล็ก',           w: 0.50, d: 0.55, h: 0.85, color: '#2a2b2e', group: 'mine' },
-  fan:        { name: 'พัดลมตั้งพื้นสีชมพู 16"', w: 0.48, d: 0.40, h: 1.20, color: '#ec8db2', group: 'mine' },  // แบบเสาปรับสูง (ประมาณ)
+  fan:        { name: 'พัดลม Mitsubishi 16" ชมพู', w: 0.50, d: 0.46, h: 1.20, color: '#e895bd', group: 'mine' },  // ตั้งพื้นเสาสไลด์ (ขนาดประมาณจากรุ่น 16")
   purifier:   { name: 'เครื่องฟอกอากาศ Mijia 6', w: 0.25, d: 0.25, h: 0.555, color: '#f4f4f2', group: 'mine' },  // 250×250×555 มม. (สเปก)
   asus:       { name: 'จอ ASUS PG32UCDM + แขน', w: 0.72, d: 0.24, h: 0.56, color: '#1b1c1f', group: 'mine', top: true },
   xiaomi:     { name: 'จอ Xiaomi G27 แนวตั้ง', w: 0.38, d: 0.20, h: 0.70, color: '#1b1c1f', group: 'mine', top: true },
@@ -1597,46 +1597,93 @@ const BUILD = {
     g.add(box(mat('#2fb3aa', 0.6), 0.262, 0.266, 0.47, 0.5, 0.1, 0.13, { cast: false }));     // ป้าย bewell สีเขียวน้ำทะเล
     return g;
   },
-  fan(f) {        // พัดลมตั้งพื้น 16" สีชมพู: ฐานกลม · เสาปรับสูง · หัวมอเตอร์ · กะโหลกตะแกรงดำขอบชมพู · ใบพัด 3 ใบ (ลมเป่าไปทาง -Z)
-    const g = new THREE.Group(), pink = mat(f.color, 0.4), black = mat('#1b1c1f', 0.5, 0.3), white = mat('#f3f1ee', 0.4);
-    const cy = f.h - 0.25, cz = -0.03, R = 0.235;
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.05, 32), pink);
-    base.position.y = 0.025;
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, cy - 0.12, 14), white);
-    pole.position.set(0, 0.05 + (cy - 0.12) / 2, 0.06);
-    const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.065, 0.17, 24), pink);
-    motor.rotation.x = Math.PI / 2;
-    motor.position.set(0, cy, 0.1);
-    g.add(box(pink, -0.03, 0.03, cy - 0.12, cy - 0.06, 0.04, 0.09));                                   // คอปรับก้มเงย
-    for (const m of [base, pole, motor]) { m.castShadow = true; g.add(m); }
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 0.014, 10, 48), pink);
-    rim.position.set(0, cy, cz);
-    rim.castShadow = true;
-    g.add(rim);
-    for (const [z, sgn] of [[cz - 0.045, 1], [cz + 0.05, -1]]) {                                       // ตะแกรงหน้า/หลัง: ซี่รัศมี + วงแหวน
-      for (let i = 0; i < 24; i++) {
-        const a = (i / 24) * Math.PI * 2, bar = new THREE.Mesh(new THREE.BoxGeometry(0.004, R - 0.02, 0.004), black);
-        bar.position.set(Math.sin(a) * (R / 2 + 0.01), cy + Math.cos(a) * (R / 2 + 0.01), z);
-        bar.rotation.z = -a;
-        g.add(bar);
-      }
-      for (const r of [0.08, 0.15, 0.21]) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.003, 6, 40), black);
-        ring.position.set(0, cy, z + sgn * 0.004);
-        g.add(ring);
-      }
+  fan(f) {        // พัดลมตั้งพื้น Mitsubishi Electric 16" สีชมพู (ตามรูป): ฐานกลม 2 ชั้น + ปุ่มกด 4 ปุ่ม · เสาสไลด์ 2 ท่อน + ปลอกล็อก
+    //                 คอพับก้มเงย · หัวมอเตอร์ทรงเหลี่ยมมน + ปุ่มส่าย · กะโหลกตะแกรงดำ (หน้าซี่ถี่ หลังโค้งนูน) ขอบชมพู · โลโก้กลางหน้า · ใบพัดใส 3 ใบ (ลมเป่าไปทาง -Z)
+    const g = new THREE.Group();
+    const pink = mat(f.color, 0.3, 0.05), pinkDark = mat('#c96aa3', 0.3, 0.05), pinkLight = mat('#f0b3d2', 0.35), black = mat('#18191b', 0.5, 0.2), metal = mat('#b9bec4', 0.3, 0.8);
+    const cy = f.h - 0.245, cz = -0.04, R = 0.235;                     // กึ่งกลางกะโหลก · รัศมีกะโหลก 16"
+    const add = (m, cast = true) => { m.castShadow = cast; m.receiveShadow = true; g.add(m); return m; };
+    // ฐาน: วงนอกชมพูเข้ม + แผ่นในยกขึ้นสีอ่อน + ปุ่มกด 4 ปุ่ม + สติกเกอร์
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.205, 0.035, 48), pinkDark)).position.set(0, 0.0175, 0.02);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.14, 0.025, 40), pink)).position.set(0, 0.0475, 0.02);
+    for (let i = 0; i < 4; i++) add(new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.01, 12), pinkLight)).position.set(-0.045 + i * 0.03, 0.062, -0.07);
+    add(new THREE.Mesh(new THREE.CircleGeometry(0.03, 20), mat('#3f8fd8', 0.5)), false).position.set(0.065, 0.0605, -0.035);
+    g.children.at(-1).rotation.x = -Math.PI / 2;
+    // เสา: ท่อนล่างหนา (ต่อจากฐาน) → ปลอกล็อก → ท่อนบนเรียว
+    const px = 0, pz = 0.11, collar = 0.56, top = cy - 0.1;
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.034, collar - 0.06, 20), pink)).position.set(px, 0.06 + (collar - 0.06) / 2, pz);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.05, 20), pinkDark)).position.set(px, collar, pz);
+    g.add(box(pinkDark, px - 0.012, px + 0.012, collar - 0.03, collar + 0.02, pz - 0.05, pz - 0.034));      // ก้านล็อกความสูง
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.024, top - collar, 18), pink)).position.set(px, (collar + top) / 2, pz);
+    // คอพับ: ข้อต่อ + สกรู 2 ตัว
+    g.add(box(pink, px - 0.025, px + 0.025, top - 0.02, cy - 0.04, pz - 0.03, pz + 0.025));
+    for (const y of [top + 0.005, top + 0.03]) { const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.056, 10), metal); sc.rotation.z = Math.PI / 2; sc.position.set(px, y, pz); g.add(sc); }
+    // หัวมอเตอร์ทรงเหลี่ยมมน (ยื่นไปด้านหลัง) + ปุ่มส่ายด้านบน + ฉลาก
+    const motorGeo = new THREE.ExtrudeGeometry(roundedRect(0.125, 0.13, 0.035), { depth: 0.16, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 3, curveSegments: 6 });
+    const motor = add(new THREE.Mesh(motorGeo, pink));
+    motor.position.set(0, cy, cz + 0.085);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.035, 12), pink)).position.set(0, cy + 0.08, cz + 0.17);
+    g.add(box(mat('#d9dadc', 0.5), -0.035, 0.035, cy + 0.02, cy + 0.045, cz + 0.245, cz + 0.2575, { cast: false }));
+    // กะโหลก: ตะแกรงลวดรวมเป็น mesh เดียว (ซี่รัศมีหน้า 72 ซี่ + หลัง 48 ซี่ โค้งนูน + วงแหวน)
+    const parts = [], tmp = new THREE.Object3D();
+    const wire = (a, b, r) => {
+      const geo = new THREE.CylinderGeometry(r, r, a.distanceTo(b), 5, 1, true);
+      tmp.position.copy(a).add(b).multiplyScalar(0.5);
+      tmp.quaternion.setFromUnitVectors(new V(0, 1, 0), b.clone().sub(a).normalize());
+      tmp.updateMatrix();
+      parts.push(geo.applyMatrix4(tmp.matrix));
+    };
+    const fz = cz - 0.035, rzRim = cz + 0.02, rzBack = cz + 0.085;
+    for (let i = 0; i < 72; i++) {                                                                          // หน้า: ซี่ตรงจากโลโก้ถึงขอบ (โค้งเล็กน้อย)
+      const a = (i / 72) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      wire(new V(c * 0.055, cy + s * 0.055, fz - 0.01), new V(c * R, cy + s * R, fz + 0.015), 0.0016);
     }
-    const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.012, 24), pink);
-    badge.rotation.x = Math.PI / 2;
-    badge.position.set(0, cy, cz - 0.052);
-    g.add(badge);
-    for (let k = 0; k < 3; k++) {                                                                    // ใบพัด
-      const blade = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16, -0.45, 0.9), new THREE.MeshStandardMaterial({ color: 0xf2b7cc, roughness: 0.4, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
-      blade.position.set(0, cy, cz);
-      blade.rotation.z = (k / 3) * Math.PI * 2;
-      blade.geometry.translate(0.04, 0, 0);
+    for (let i = 0; i < 48; i++) {                                                                          // หลัง: โค้งนูนไปหาหัวมอเตอร์
+      const a = (i / 48) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      const p0 = new V(c * R, cy + s * R, rzRim), p1 = new V(c * R * 0.62, cy + s * R * 0.62, rzBack - 0.015), p2 = new V(c * 0.075, cy + s * 0.075, rzBack);
+      wire(p0, p1, 0.0016); wire(p1, p2, 0.0016);
+    }
+    for (const [r, z, t] of [[0.09, fz - 0.005, 0.0022], [0.14, fz, 0.0022], [0.19, fz + 0.007, 0.0022], [0.11, rzBack - 0.01, 0.002], [0.17, rzBack - 0.02, 0.002]]) {
+      const geo = new THREE.TorusGeometry(r, t, 5, 72);
+      geo.translate(0, cy, z);
+      parts.push(geo);
+    }
+    const grille = new THREE.Mesh(mergeGeometries(parts, false), black);
+    parts.forEach((p) => p.dispose());
+    grille.castShadow = true;
+    g.add(grille);
+    // ขอบกะโหลกชมพู (แถบกว้าง) + ขอบดำบาง
+    const bandMat = mat(f.color, 0.3, 0.05);
+    bandMat.side = THREE.DoubleSide;
+    const band = add(new THREE.Mesh(new THREE.CylinderGeometry(R + 0.006, R + 0.006, 0.042, 72, 1, true), bandMat));
+    band.rotation.x = Math.PI / 2;
+    band.position.set(0, cy, cz + 0.002);
+    for (const z of [cz - 0.02, cz + 0.024]) add(new THREE.Mesh(new THREE.TorusGeometry(R + 0.006, 0.004, 6, 72), black), false).position.set(0, cy, z);
+    // โลโก้กลางหน้า: แผ่นดำ + เพชรแดง 3 เม็ด + MITSUBISHI ELECTRIC
+    const logo = canvasTexture(256, (c, S) => {
+      c.fillStyle = '#141517'; c.beginPath(); c.arc(S / 2, S / 2, S / 2, 0, 7); c.fill();
+      c.fillStyle = '#d7d8da';
+      const dia = (x, y, a) => { c.save(); c.translate(x, y); c.rotate(a); c.beginPath(); c.moveTo(0, -14); c.lineTo(7, 0); c.lineTo(0, 14); c.lineTo(-7, 0); c.closePath(); c.fill(); c.restore(); };
+      dia(70, 112, 0); dia(58, 134, Math.PI / 3 * 2 - Math.PI / 6 * 2); dia(82, 134, -(Math.PI / 3 * 2 - Math.PI / 6 * 2));
+      c.font = '600 26px system-ui, sans-serif'; c.textAlign = 'left'; c.fillText('MITSUBISHI', 96, 124); c.fillText('ELECTRIC', 96, 152);
+    }, 1, 1);
+    const emblem = new THREE.Mesh(new THREE.CircleGeometry(0.055, 32), new THREE.MeshStandardMaterial({ map: logo, roughness: 0.4 }));
+    emblem.rotation.y = Math.PI;
+    emblem.position.set(0, cy, fz - 0.012);
+    g.add(emblem);
+    // ใบพัดใสสีควัน 3 ใบ + ดุม
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x8c96a0, roughness: 0.25, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+    for (let k = 0; k < 3; k++) {
+      const shape = new THREE.Shape();
+      shape.moveTo(0.04, -0.02); shape.quadraticCurveTo(0.2, -0.09, 0.215, 0.0); shape.quadraticCurveTo(0.2, 0.08, 0.04, 0.025); shape.closePath();
+      const blade = new THREE.Mesh(new THREE.ShapeGeometry(shape, 10), bladeMat);
+      blade.renderOrder = 2;
+      blade.position.set(0, cy, cz + 0.01);
+      blade.rotation.set(0.35, 0, (k / 3) * Math.PI * 2, 'ZYX');                                        // บิดใบรอบแกนรัศมี แล้วหมุนรอบแกนพัดลม
       g.add(blade);
     }
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.04, 24), black)).rotation.x = Math.PI / 2;
+    g.children.at(-1).position.set(0, cy, cz + 0.015);
     return g;
   },
   purifier(f) {   // เครื่องฟอกอากาศ Mijia Smart Air Purifier 6 (250×250×555 มม.): ทรงเหลี่ยมมุมมน สีขาว · ครึ่งล่างรูตะแกรงรอบตัว · บนเป็นช่องลมใบพัดซี่รัศมี · จอกลมด้านหน้า
