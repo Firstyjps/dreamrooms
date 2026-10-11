@@ -397,7 +397,7 @@ const CATALOG = {
   nightstand: { name: 'ตู้ข้างเตียง 2 ลิ้นชัก', w: 0.40, d: 0.40, h: 0.55, color: '#d6b78c' },
   glassdesk:  { name: 'โต๊ะกระจก 100×36',     w: 1.00, d: 0.36, h: 0.74, color: '#202124' },
   adde:       { name: 'เก้าอี้เหล็กดำ',        w: 0.39, d: 0.47, h: 0.77, color: '#1c1d1f' },
-  wardrobe2:  { name: 'ตู้เสื้อผ้าไม้ + กระจก', w: 1.20, d: 0.60, h: 2.00, color: '#cfc1ab' },   // user: ใหญ่กว่า 90 ซม. · ห่างสวิตช์ข้างประตูแค่ ~40 ซม. (รูปจากคลิป)
+  wardrobe2:  { name: 'ตู้เสื้อผ้าไม้ + กระจก', w: 1.40, d: 0.60, h: 2.00, color: '#cfc1ab' },   // กว้าง 1.40 (user กำหนด) · ลึก/สูงประมาณ
   bin:        { name: 'ถังขยะ',               w: 0.24, d: 0.24, h: 0.32, color: '#5d6166' },
   rack:       { name: 'ราวแขวนผ้า',           w: 0.80, d: 0.45, h: 0.95, color: '#c9a06a', group: 'other' },
   bed:        { name: 'เตียง 5 ฟุต',          w: 1.60, d: 2.10, h: 1.00, color: '#4a342a', group: 'other' },
@@ -416,7 +416,7 @@ const DEFAULT_LAYOUT = [
   { type: 'adde',       x: W - 0.62,    z: 4.65, rotation: 270 },
   { type: 'adde',       x: W - 0.62,    z: 3.65, rotation: 270 },
   { type: 'bin',        x: W - 0.16,    z: 5.30, rotation: 0 },
-  { type: 'wardrobe2',  x: 0.87,        z: 0.30, rotation: 180 },   // X 0.27–1.47 · ขอบตู้ห่างสวิตช์ไฟ (X 1.87) ~40 ซม.
+  { type: 'wardrobe2',  x: 0.70,        z: 0.30, rotation: 180 },   // ชิดมุม X 0–1.40 · ขอบตู้ห่างสวิตช์ไฟ (X 1.87) ~47 ซม.
 ];
 
 // {id, type, name, w, d, h, x, z, rotation, color} — x, z = กึ่งกลางบนพื้น · w ตาม X · d ตาม Z · rotation องศา
@@ -2755,11 +2755,13 @@ let hadSaved = false;
 try {
   const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
   if (saved) { hadSaved = true; furniture.push(...parseLayout(saved)); }
-  for (const f of furniture) {                     // ย้ายข้อมูลเก่า: ตู้เสื้อผ้าเดิม 90×55 → 120×60 (ถ้ายังอยู่ที่เดิมตั้งต้น ย้ายไปตำแหน่งใหม่)
-    if (f.type !== 'wardrobe2' || f.w !== 0.9) continue;
-    const c = CATALOG.wardrobe2, d = DEFAULT_LAYOUT.find((q) => q.type === 'wardrobe2');
-    const atOld = Math.abs(f.x - 0.5) < 0.01 && Math.abs(f.z - 0.275) < 0.01 && f.rotation === 180;
+  for (const f of furniture) {                     // ย้ายข้อมูลเก่า: ตู้เสื้อผ้าขนาดเดิม (90×55 / 120×60) → ขนาดปัจจุบัน
+    const c = CATALOG.wardrobe2;
+    if (f.type !== 'wardrobe2' || (f.w === c.w && f.d === c.d)) continue;
+    const d = DEFAULT_LAYOUT.find((q) => q.type === 'wardrobe2');
+    const atOld = [[0.5, 0.275], [0.87, 0.3]].some(([x, z]) => Math.abs(f.x - x) < 0.01 && Math.abs(f.z - z) < 0.01) && f.rotation === 180;
     Object.assign(f, { w: c.w, d: c.d, h: c.h }, atOld ? { x: d.x, z: d.z } : {});
+    if (!atOld && collides(rectOf(f), f.id)) Object.assign(f, findSpot(f, f.rotation, f.x, f.z, 0.6) || {});   // ขยายแล้วชน → ขยับไปที่ว่างใกล้สุด
   }
 } catch { /* ไม่มี layout เก่า หรืออ่านไม่ได้ */ }
 if (!hadSaved) furniture.push(...defaultLayout());   // เปิดครั้งแรก = จัดตามวิดีโอ
