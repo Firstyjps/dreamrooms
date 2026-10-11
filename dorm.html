@@ -271,6 +271,16 @@
     </div>
   </section>
 
+  <section id="collab" hidden>
+    <div class="label">ห้องร่วม (realtime)</div>
+    <p id="collabStatus" class="sub" style="margin:0 0 6px"></p>
+    <div class="files">
+      <button type="button" id="bCollab" class="wide" style="font-weight:600; background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink)">👥 เปิดห้องร่วม — ให้เพื่อนย้ายของด้วยกัน</button>
+      <button type="button" id="bCollabCopy" hidden>🔗 คัดลอกลิงก์ห้อง</button>
+      <button type="button" id="bCollabLeave" hidden>ออกจากห้อง</button>
+    </div>
+  </section>
+
   <div id="more">
     <section>
       <div class="label">เพิ่มเฟอร์นิเจอร์ <span style="font-weight:400; letter-spacing:0">· ลากไปวางในห้อง หรือกดเพื่อวางให้อัตโนมัติ</span></div>
@@ -298,6 +308,7 @@
         <button type="button" id="bPng">ภาพแปลน PNG</button>
         <button type="button" id="bClear">ล้างห้อง</button>
         <button type="button" id="bDefault" class="wide">จัดแบบในวิดีโอ</button>
+        <button type="button" id="bShare" class="wide" style="font-weight:600; background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink)">🔗 คัดลอกลิงก์แชร์ layout นี้</button>
       </div>
       <input type="file" id="fileIn" accept=".json,application/json" hidden>
     </section>
@@ -2018,8 +2029,40 @@ const serialize = () => ({
   app: 'DreamRooms', version: 1, room: { W, D, H }, savedAt: new Date().toISOString(),
   furniture: furniture.map(({ id, type, name, w, d, h, x, z, rotation, color }) => ({ id, type, name, w, d, h, x, z, rotation, color })),
 });
+// ---------- ลิงก์แชร์: ฝัง layout ไว้ใน #l=… (base64url ของ JSON แบบย่อ) — เปิดลิงก์แล้วเห็นห้องเหมือนกัน ----------
+// ชิ้นละ [type, x, z, rotation, {ค่าที่ต่างจาก CATALOG}?] · เปิดจากลิงก์ = โหมดดู layout ที่แชร์มา (แก้ได้ แต่ไม่บันทึกทับของเครื่องนั้น จนกว่าจะกดเก็บ)
+let sharedView = false;
+function shareUrl() {
+  const arr = furniture.map((f) => {
+    const c = CATALOG[f.type] || {}, o = [f.type, +f.x.toFixed(3), +f.z.toFixed(3), f.rotation || 0], x = {};
+    if (f.name !== c.name) x.n = f.name;
+    for (const k of ['w', 'd', 'h']) if (f[k] !== c[k]) x[k] = f[k];
+    if (f.color !== c.color) x.c = f.color;
+    if (Object.keys(x).length) o.push(x);
+    return o;
+  });
+  const bytes = new TextEncoder().encode(JSON.stringify(arr));
+  let bin = '';
+  bytes.forEach((b) => { bin += String.fromCharCode(b); });
+  const code = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const base = /^https?:$/.test(location.protocol) ? `${location.origin}${location.pathname}` : 'https://firstyjps.github.io/dreamrooms/dorm.html';   // เปิดจากไฟล์ในเครื่อง → ใช้ลิงก์เว็บจริง
+  return `${base}#l=${code}`;
+}
+function readShareHash() {
+  const m = /^#l=([\w-]+)$/.exec(location.hash);
+  if (!m) return null;
+  const bin = atob(m[1].replace(/-/g, '+').replace(/_/g, '/'));
+  const arr = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (ch) => ch.charCodeAt(0))));
+  return parseLayout(arr.map(([type, x, z, rotation, e = {}]) => {
+    const c = CATALOG[type] || {};
+    return { type, x, z, rotation, name: e.n ?? c.name, w: e.w ?? c.w, d: e.d ?? c.d, h: e.h ?? c.h, color: e.c ?? c.color };
+  }));
+}
+let syncFlush = null, syncSoon = null;                       // ตั้งโดยห้องร่วม (Sync) ตอนเชื่อมต่อ
 function persist() {
+  if (sharedView) return;                                   // ดู layout ที่แชร์มา: ไม่บันทึกทับ
   try { localStorage.setItem(STORE_KEY, JSON.stringify(serialize())); } catch { /* storage ใช้ไม่ได้ — ข้าม */ }
+  syncFlush?.();
 }
 function parseLayout(data) {
   const arr = Array.isArray(data) ? data : data?.furniture;
@@ -2469,6 +2512,7 @@ canvas.addEventListener('pointermove', (e) => {
       drag.moved = true;
       for (const r of drag.riders) { r.g.x = +(r.x0 + f.x - drag.x0).toFixed(4); r.g.z = +(r.z0 + f.z - drag.z0).toFixed(4); place(r.g); }
       place(f); updateSelection();
+      syncSoon?.();                                          // ห้องร่วม: ส่งตำแหน่งระหว่างลาก
     }
     return;
   }
@@ -2705,6 +2749,27 @@ fileIn.addEventListener('change', async () => {
 });
 document.getElementById('bPng').addEventListener('click', exportPNG);
 document.getElementById('bDefault').addEventListener('click', () => { loadLayout(defaultLayout()); toast('จัดตามวิดีโอแล้ว'); });
+const bShare = document.getElementById('bShare');
+function syncShareBtn() { bShare.textContent = sharedView ? '💾 เก็บ layout ที่แชร์มาไว้ในเครื่องนี้' : '🔗 คัดลอกลิงก์แชร์ layout นี้'; }
+bShare.addEventListener('click', async () => {
+  if (sharedView) {                                         // เปิดจากลิงก์แชร์ → กดเก็บเป็นของตัวเอง
+    sharedView = false;
+    history.replaceState(null, '', location.pathname + location.search);
+    persist();
+    syncShareBtn();
+    toast('เก็บ layout นี้ไว้ในเครื่องนี้แล้ว');
+    return;
+  }
+  const url = shareUrl();
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('คัดลอกลิงก์แล้ว — วางส่งให้เพื่อนได้เลย');
+  } catch {
+    window.prompt('คัดลอกลิงก์นี้ส่งให้เพื่อน', url);       // บางเบราว์เซอร์ไม่ให้เขียนคลิปบอร์ด
+  }
+});
+syncShareBtn();
+if (sharedView) setTimeout(() => toast('กำลังดู layout ที่แชร์มา — แก้ได้แต่ไม่บันทึกทับของคุณ'), 600);
 
 const bClear = document.getElementById('bClear');
 let clearTimer;
@@ -2749,11 +2814,150 @@ addEventListener('resize', () => {
 });
 
 // =====================================================================
+// ห้องร่วม realtime (Firebase Realtime Database) — dorm.html?r=<รหัสห้อง>
+//   ทุกคนที่เปิดลิงก์ห้องเดียวกันเห็นกันลาก/หมุน/เพิ่ม/ลบเฟอร์นิเจอร์สด ๆ และบันทึกรวมที่เดียว (ปิดเว็บแล้วเปิดใหม่ยังอยู่)
+//   ข้อมูล: rooms/<รหัส>/items/<id> = {type,name,w,d,h,x,z,rotation,color} · rooms/<รหัส>/online/<client> (หายเองเมื่อปิดหน้า)
+//   ส่งเฉพาะชิ้นที่เปลี่ยน (เทียบกับค่าที่ส่ง/รับล่าสุด) · ระหว่างลากส่งทุก ~80 ms · ชิ้นที่ตัวเองกำลังลากไม่รับค่าจากเซิร์ฟเวอร์ทับ
+//   รหัสห้องสุ่ม 10 ตัว = รู้ลิงก์ถึงเข้าได้ (กฎฐานข้อมูลไม่ให้ไล่ดูรายชื่อห้อง)
+// =====================================================================
+const FIREBASE_CONFIG = null;   // ← ใส่ firebaseConfig จาก Firebase console (Project settings → Your apps → Web app) · null = ปิดฟีเจอร์ห้องร่วม
+const ROOM_KEY = 'dreamrooms.dorm.room';
+const Sync = (() => {
+  const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  const client = Math.random().toString(36).slice(2, 10);
+  const lastSent = new Map();                               // id → JSON ล่าสุดที่ตรงกับเซิร์ฟเวอร์
+  let api = null, db = null, roomId = null, itemsRef = null, unsubs = [], applying = false, timer = null, online = 1;
+  const el = document.getElementById('collab'), statusEl = document.getElementById('collabStatus');
+  const bStart = document.getElementById('bCollab'), bCopy = document.getElementById('bCollabCopy'), bLeave = document.getElementById('bCollabLeave');
+  const pack = (f) => ({ type: f.type, name: f.name, w: f.w, d: f.d, h: f.h, x: +f.x.toFixed(4), z: +f.z.toFixed(4), rotation: f.rotation || 0, color: f.color });
+  const link = () => {
+    const base = /^https?:$/.test(location.protocol) ? `${location.origin}${location.pathname}` : 'https://firstyjps.github.io/dreamrooms/dorm.html';
+    return `${base}?r=${roomId}`;
+  };
+  function ui() {
+    el.hidden = !FIREBASE_CONFIG;
+    bStart.hidden = !!roomId;
+    bCopy.hidden = bLeave.hidden = !roomId;
+    statusEl.textContent = roomId ? `🟢 ห้องร่วม · ออนไลน์ ${online} คน · ย้ายของแล้วทุกคนเห็นทันที` : 'จัดห้องคนเดียว (บันทึกในเครื่องนี้)';
+  }
+  // ส่งเฉพาะชิ้นที่ต่างจากค่าล่าสุดของเซิร์ฟเวอร์ (null = ลบ)
+  function flush() {
+    clearTimeout(timer); timer = null;
+    if (!itemsRef || applying) return;
+    const patch = {}, seen = new Set();
+    for (const f of furniture) {
+      const p = pack(f), j = JSON.stringify(p);
+      seen.add(f.id);
+      if (lastSent.get(f.id) !== j) { patch[f.id] = p; lastSent.set(f.id, j); }
+    }
+    for (const id of [...lastSent.keys()]) if (!seen.has(id)) { patch[id] = null; lastSent.delete(id); }
+    if (Object.keys(patch).length) api.update(itemsRef, patch).catch((err) => toast(`บันทึกห้องร่วมไม่สำเร็จ: ${err.code || err.message}`, true));
+  }
+  const soon = () => { if (itemsRef && !timer) timer = setTimeout(flush, 80); };
+  // รับสถานะทั้งห้องจากเซิร์ฟเวอร์ → แก้เฉพาะที่ต่าง (ย้าย = place · เพิ่ม/ลบ/เปลี่ยนขนาด/หมุน = rebuild)
+  function applyRemote(obj) {
+    applying = true;
+    const busy = new Set(drag ? [drag.id, ...drag.riders.map((r) => r.g.id)] : []);
+    let structural = false, moved = false;
+    for (let i = furniture.length - 1; i >= 0; i--) {
+      const f = furniture[i];
+      if (!(f.id in obj) && !busy.has(f.id)) { furniture.splice(i, 1); lastSent.delete(f.id); structural = true; }
+    }
+    for (const [id, raw] of Object.entries(obj)) {
+      let clean;
+      try { [clean] = parseLayout([{ ...raw, id }]); } catch { clean = null; }
+      if (!clean) continue;
+      lastSent.set(id, JSON.stringify(pack(clean)));
+      if (busy.has(id)) continue;
+      const f = byId(id);
+      if (!f) { furniture.push(clean); structural = true; continue; }
+      if (['type', 'name', 'w', 'd', 'h', 'color', 'rotation'].some((k) => f[k] !== clean[k])) { Object.assign(f, clean); structural = true; continue; }
+      if (f.x !== clean.x || f.z !== clean.z) { f.x = clean.x; f.z = clean.z; place(f); moved = true; }
+    }
+    if (selectedId && !byId(selectedId)) selectedId = null;
+    if (structural) rebuild();
+    else if (moved) { updateSelection(); renderList(); persist(); }
+    applying = false;
+  }
+  async function join(id, { seed = false } = {}) {
+    if (!FIREBASE_CONFIG) return;
+    try {
+      if (!api) {
+        const [app, dbm] = await Promise.all([import(`${FB}firebase-app.js`), import(`${FB}firebase-database.js`)]);
+        api = dbm;
+        db = dbm.getDatabase(app.initializeApp(FIREBASE_CONFIG));
+      }
+      leave(true);
+      roomId = id;
+      itemsRef = api.ref(db, `rooms/${id}/items`);
+      const snap = await api.get(itemsRef);
+      if (seed || !snap.exists()) { lastSent.clear(); flush(); }      // ห้องใหม่/ว่าง → อัปโหลด layout ปัจจุบัน
+      unsubs.push(api.onValue(itemsRef, (s) => applyRemote(s.val() || {}),
+        (err) => { toast(`เชื่อมห้องร่วมไม่ได้: ${err.code || err.message}`, true); leave(); }));
+      const me = api.ref(db, `rooms/${id}/online/${client}`);
+      unsubs.push(api.onValue(api.ref(db, '.info/connected'), (s) => {
+        if (!s.val()) return;
+        api.onDisconnect(me).remove();
+        api.set(me, { t: api.serverTimestamp() });
+      }));
+      unsubs.push(api.onValue(api.ref(db, `rooms/${id}/online`), (s) => { online = Math.max(1, s.size); ui(); }));
+      unsubs.push(() => api.remove(me));
+      syncFlush = flush; syncSoon = soon;
+      sharedView = false;
+      try { localStorage.setItem(ROOM_KEY, id); } catch { /* ข้าม */ }
+      const url = new URL(location.href);
+      url.searchParams.set('r', id); url.hash = '';
+      history.replaceState(null, '', url);
+      ui();
+      return true;
+    } catch (err) {
+      toast(`เปิดห้องร่วมไม่ได้: ${err.code || err.message}`, true);
+      roomId = itemsRef = null; ui();
+      return false;
+    }
+  }
+  function leave(silent = false) {
+    unsubs.forEach((u) => { try { u(); } catch { /* ข้าม */ } });
+    unsubs = []; itemsRef = null; syncFlush = syncSoon = null; lastSent.clear();
+    if (silent) return;
+    roomId = null; online = 1;
+    try { localStorage.removeItem(ROOM_KEY); } catch { /* ข้าม */ }
+    const url = new URL(location.href);
+    url.searchParams.delete('r');
+    history.replaceState(null, '', url);
+    persist();
+    ui();
+  }
+  async function copy() {
+    try { await navigator.clipboard.writeText(link()); toast('คัดลอกลิงก์ห้องแล้ว — ส่งให้เพื่อนเปิดได้เลย'); }
+    catch { window.prompt('คัดลอกลิงก์ห้องนี้ส่งให้เพื่อน', link()); }
+  }
+  bStart.addEventListener('click', async () => {
+    const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
+    if (await join(id, { seed: true })) copy();
+  });
+  bCopy.addEventListener('click', copy);
+  bLeave.addEventListener('click', () => { leave(); toast('ออกจากห้องร่วมแล้ว — layout ยังอยู่ในเครื่องนี้'); });
+  function init() {
+    ui();
+    if (!FIREBASE_CONFIG) return;
+    let id = new URLSearchParams(location.search).get('r');
+    if (!id) { try { id = localStorage.getItem(ROOM_KEY); } catch { /* ข้าม */ } }
+    if (id && /^[a-z0-9]{6,24}$/.test(id)) join(id).then((ok) => ok && toast('เข้าห้องร่วมแล้ว — เห็นกันย้ายของแบบ realtime'));
+  }
+  return { init, flush, get room() { return roomId; } };
+})();
+
+// =====================================================================
 // เริ่ม
 // =====================================================================
 let hadSaved = false;
 try {
-  const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+  const shared = readShareHash();
+  if (shared) { hadSaved = sharedView = true; furniture.push(...shared); }
+} catch { history.replaceState(null, '', location.pathname + location.search); }   // ลิงก์แชร์เสีย → ใช้ของในเครื่องตามปกติ
+try {
+  const saved = !sharedView && JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
   if (saved) { hadSaved = true; furniture.push(...parseLayout(saved)); }
   for (const f of furniture) {                     // ย้ายข้อมูลเก่า: ตู้เสื้อผ้าขนาดเดิม (90×55 / 120×60) → ขนาดปัจจุบัน
     const c = CATALOG.wardrobe2;
@@ -2862,7 +3066,8 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, activeCam);
   labelRenderer.render(scene, activeCam);
 });
-window.DreamRoom = { ROOM, FIXED, CATALOG, furniture, rebuild, setView, setLight, exportPNG, renderer, scene, camera: persp, controls };
+Sync.init();
+window.DreamRoom = { Sync, shareUrl, ROOM, FIXED, CATALOG, furniture, rebuild, setView, setLight, exportPNG, renderer, scene, camera: persp, controls };
 </script>
 </body>
 </html>
