@@ -273,7 +273,7 @@
 
   <div id="more">
     <section>
-      <div class="label">เพิ่มเฟอร์นิเจอร์</div>
+      <div class="label">เพิ่มเฟอร์นิเจอร์ <span style="font-weight:400; letter-spacing:0">· ลากไปวางในห้อง หรือกดเพื่อวางให้อัตโนมัติ</span></div>
       <div class="cat" id="cat"></div>
     </section>
 
@@ -1708,12 +1708,21 @@ function renderList() {
 }
 
 // ---------- คำสั่ง ----------
-function addItem(type) {
+// at = จุดที่ลากมาวาง {x, z} (ไม่ใส่ = กดปุ่ม → หาที่ให้อัตโนมัติ)
+function addItem(type, at = null) {
   const c = CATALOG[type];
   const f = { id: newId(), type, name: c.name, w: c.w, d: c.d, h: c.h, x: 0, z: 0, rotation: 0, color: c.color };
   furniture.push(f);                                        // ใส่ก่อนหาที่ (การชนดูชั้นจาก type ของชิ้นนี้)
   let spot = null;
-  if (c.top) {                                              // ของบนโต๊ะ: หาที่ว่างบนโต๊ะ — โต๊ะของฉันก่อน
+  if (at) {                                                 // ลากมาวาง: ที่ว่างใกล้จุดปล่อยที่สุด · ของบนโต๊ะปล่อยบนโต๊ะ = หันตามโต๊ะ
+    const desk = c.top && furniture.find((g) => SURFACES.has(g.type) && contains(rectOf(g), at.x, at.z));
+    for (const rot of desk ? [desk.rotation || 0] : [0, 90]) {
+      spot = findSpot(f, rot, at.x, at.z, 0.6, desk ? (x, z) => contains(rectOf(desk), x, z) : null);
+      if (spot) { f.rotation = rot; break; }
+    }
+    if (!spot) { furniture.pop(); toast(`วาง${c.name}ตรงนั้นไม่ได้ ลองที่ว่างกว่านี้`, true); return; }
+  }
+  if (c.top && !spot) {                                              // ของบนโต๊ะ: หาที่ว่างบนโต๊ะ — โต๊ะของฉันก่อน
     const desks = furniture.filter((g) => SURFACES.has(g.type) && g.type !== 'nightstand' && g.type !== 'fridge')
       .sort((a, b) => (CATALOG[b.type]?.group === 'mine') - (CATALOG[a.type]?.group === 'mine'));
     for (const d of desks) {                                // ชิดขอบหลังโต๊ะ (คีย์บอร์ดชิดขอบหน้า) · ทั้งชิ้นอยู่บนโต๊ะก่อน ไม่ได้ค่อยยอมให้ล้นขอบ
@@ -2373,7 +2382,53 @@ function toast(msg, bad = false) {
 document.getElementById('cat').innerHTML = [['mine', 'ของฉัน'], ['room', 'ของที่หอให้ (ตามวิดีโอ)'], ['other', 'อื่น ๆ']].map(([grp, title]) =>
   `<div class="catlabel">${title}</div>` + Object.entries(CATALOG).filter(([, c]) => c.group === grp).map(([type, c]) =>
     `<button type="button" data-type="${type}"><span>${esc(c.name)}</span><small>${cm(c.w)}×${cm(c.d)} ซม.${c.top ? ' · บนโต๊ะ' : ''}</small></button>`).join('')).join('');
-document.getElementById('cat').addEventListener('click', (e) => {
+// ลากจากรายการไปปล่อยในห้อง (เมาส์) · กดเฉย ๆ = วางให้อัตโนมัติ
+const catEl = document.getElementById('cat'), catGhost = document.createElement('div');
+catGhost.className = 'tag';
+catGhost.style.cssText = 'position:fixed; z-index:20; pointer-events:none; transform:translate(-50%, -130%)';
+catGhost.hidden = true;
+document.body.appendChild(catGhost);
+let catDrag = null, catSuppressClick = false;
+// จุดบนพื้นใต้เคอร์เซอร์ — ถ้าชี้โดนโต๊ะ/ตู้ ใช้จุดบนผิวนั้น (มุมเอียงจะได้ไม่เลื่อนไปหลังโต๊ะ)
+function dropPoint(e) {
+  setRay(e);
+  const hit = raycaster.intersectObjects(furnitureGroup.children, true)[0];
+  let o = hit?.object;
+  while (o && !o.userData.id) o = o.parent;
+  const g = o && byId(o.userData.id);
+  if (g && SURFACES.has(g.type)) return { x: hit.point.x, z: hit.point.z };
+  const p = raycaster.ray.intersectPlane(floorPlane, new V());
+  return p && { x: p.x, z: p.z };
+}
+catEl.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('button[data-type]');
+  if (!b || e.pointerType !== 'mouse' || e.button !== 0) return;
+  catDrag = { type: b.dataset.type, x: e.clientX, y: e.clientY, id: e.pointerId, moved: false };
+  b.setPointerCapture(e.pointerId);
+});
+catEl.addEventListener('pointermove', (e) => {
+  if (!catDrag || e.pointerId !== catDrag.id) return;
+  if (!catDrag.moved && Math.hypot(e.clientX - catDrag.x, e.clientY - catDrag.y) < 8) return;
+  catDrag.moved = true;
+  catGhost.hidden = false;
+  catGhost.textContent = `+ ${CATALOG[catDrag.type].name}`;
+  catGhost.style.left = `${e.clientX}px`;
+  catGhost.style.top = `${e.clientY}px`;
+});
+catEl.addEventListener('pointerup', (e) => {
+  if (!catDrag || e.pointerId !== catDrag.id) return;
+  const d = catDrag;
+  catDrag = null;
+  catGhost.hidden = true;
+  if (!d.moved) return;
+  catSuppressClick = true;
+  if (document.elementFromPoint(e.clientX, e.clientY) !== canvas) return;   // ปล่อยบนแผงเมนู = ยกเลิก
+  const p = dropPoint(e);
+  if (p) addItem(d.type, p);
+});
+catEl.addEventListener('pointercancel', () => { catDrag = null; catGhost.hidden = true; });
+catEl.addEventListener('click', (e) => {
+  if (catSuppressClick) { catSuppressClick = false; return; }
   const b = e.target.closest('button[data-type]');
   if (b) addItem(b.dataset.type);
 });
