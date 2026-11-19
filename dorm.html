@@ -404,6 +404,14 @@ const CATALOG = {
   mac:        { name: 'MacBook Air M5',      w: 0.31, d: 0.26, h: 0.22, color: '#2d3542', group: 'mine', top: true },
   rog:        { name: 'ROG Strix G15 + ขาตั้ง', w: 0.36, d: 0.32, h: 0.42, color: '#3b3d48', group: 'mine', top: true },
   kbset:      { name: 'คีย์บอร์ด + เมาส์ + แผ่นรอง', w: 0.49, d: 0.42, h: 0.04, color: '#1d1e22', group: 'mine', top: true },
+  homepod:    { name: 'HomePod mini',          w: 0.10, d: 0.10, h: 0.085, color: '#24262b', group: 'mine', top: true },
+  diffuser:   { name: 'เครื่องพ่นน้ำหอม Xiaomi', w: 0.08, d: 0.08, h: 0.15, color: '#f3f4f6', group: 'mine', top: true },
+  g3:         { name: 'กล้อง Aqara Hub G3',    w: 0.09, d: 0.09, h: 0.125, color: '#f4f4f2', group: 'mine', top: true },
+  router:     { name: 'เราเตอร์ Xiaomi BE3600', w: 0.21, d: 0.15, h: 0.21, color: '#f3f4f6', group: 'mine', top: true },
+  sensor:     { name: 'ESP32-C6 + LD2450 mmWave', w: 0.08, d: 0.06, h: 0.09, color: '#1e1b4b', group: 'mine', top: true },
+  projector:  { name: 'เสาโปรเจกเตอร์ Wall HUD', w: 0.16, d: 0.16, h: 2.60, color: '#38bdf8', group: 'mine' },
+  robotarm:   { name: 'แขนกล SO-ARM101 / Bot', w: 0.18, d: 0.18, h: 0.34, color: '#e11d48', group: 'mine', top: true },
+  ipad:       { name: 'iPad Mission Control',  w: 0.25, d: 0.14, h: 0.18, color: '#1e293b', group: 'mine', top: true },
   bed35:      { name: 'เตียง 3.5 ฟุต',        w: 1.12, d: 2.08, h: 0.95, color: '#1f1f21' },
   nightstand: { name: 'ตู้ข้างเตียง 2 ลิ้นชัก', w: 0.40, d: 0.40, h: 0.55, color: '#d6b78c' },
   glassdesk:  { name: 'โต๊ะกระจก 100×36',     w: 1.00, d: 0.36, h: 0.74, color: '#202124' },
@@ -1748,6 +1756,141 @@ const BUILD = {
     m.castShadow = true;
     g.add(m);
     g.add(box(body, -f.w * 0.3, f.w * 0.3, 0, 0.01, -f.w * 0.3, f.w * 0.3));
+    return g;
+  },
+  homepod(f) {
+    const g = new THREE.Group(), r = f.w / 2;
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 16), mat(f.color, 0.85));
+    mesh.scale.set(1, f.h / (2 * r), 1);
+    mesh.position.y = f.h / 2;
+    mesh.castShadow = true;
+    g.add(mesh);
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(r * 0.52, 20), new THREE.MeshBasicMaterial({ color: 0x38bdf8, toneMapped: false }));
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.y = f.h + 0.001;
+    g.add(glow);
+    return g;
+  },
+  diffuser(f) {
+    const g = new THREE.Group(), r = f.w / 2;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.92, r, f.h * 0.88, 24), mat(f.color, 0.35));
+    body.position.y = f.h * 0.44;
+    body.castShadow = true;
+    g.add(body);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.95, r * 0.95, 0.012, 24), new THREE.MeshBasicMaterial({ color: 0x38bdf8, toneMapped: false }));
+    ring.position.y = f.h * 0.72;
+    g.add(ring);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.3, r * 0.4, f.h * 0.14, 16), mat('#94a3b8', 0.3, 0.4));
+    cap.position.y = f.h * 0.93;
+    g.add(cap);
+    return g;
+  },
+  g3(f) {
+    const g = new THREE.Group(), r = f.w / 2;
+    const white = mat(f.color, 0.4), dark = mat('#111827', 0.25);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.88, r * 0.96, f.h * 0.42, 20), white);
+    base.position.y = f.h * 0.21;
+    base.castShadow = true;
+    g.add(base);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(r * 0.88, 20, 16), white);
+    head.position.y = f.h * 0.64;
+    head.castShadow = true;
+    g.add(head);
+    const face = new THREE.Mesh(new THREE.CircleGeometry(r * 0.6, 18), dark);
+    face.rotation.y = Math.PI;
+    face.position.set(0, f.h * 0.64, -r * 0.86);
+    g.add(face);
+    const lens = new THREE.Mesh(new THREE.CircleGeometry(r * 0.22, 16), new THREE.MeshBasicMaterial({ color: 0x22c55e, toneMapped: false }));
+    lens.rotation.y = Math.PI;
+    lens.position.set(0, f.h * 0.65, -r * 0.89);
+    g.add(lens);
+    for (const sx of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(r * 0.26, f.h * 0.22, 12), white);
+      ear.position.set(sx * r * 0.55, f.h * 0.96, 0);
+      ear.rotation.z = -sx * 0.28;
+      g.add(ear);
+    }
+    return g;
+  },
+  router(f) {
+    const g = new THREE.Group(), white = mat(f.color, 0.4);
+    g.add(box(white, -f.w / 2, f.w / 2, 0, 0.036, -f.d / 2, f.d / 2));
+    const led = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.006, 0.004), new THREE.MeshBasicMaterial({ color: 0x38bdf8, toneMapped: false }));
+    led.position.set(0, 0.018, -f.d / 2 - 0.002);
+    g.add(led);
+    for (const ax of [-0.075, -0.025, 0.025, 0.075]) {
+      g.add(box(white, ax - 0.005, ax + 0.005, 0.036, f.h, f.d / 2 - 0.018, f.d / 2 - 0.004));
+    }
+    return g;
+  },
+  sensor(f) {
+    const g = new THREE.Group();
+    g.add(box(mat(f.color, 0.45), -f.w / 2, f.w / 2, 0, f.h, -f.d / 2, f.d / 2));
+    const radar = new THREE.Mesh(new THREE.PlaneGeometry(f.w * 0.65, f.h * 0.55), mat('#f59e0b', 0.3, 0.6));
+    radar.rotation.y = Math.PI;
+    radar.position.set(0, f.h * 0.55, -f.d / 2 - 0.002);
+    g.add(radar);
+    const led = new THREE.Mesh(new THREE.CircleGeometry(0.008, 12), new THREE.MeshBasicMaterial({ color: 0xa855f7, toneMapped: false }));
+    led.rotation.y = Math.PI;
+    led.position.set(0, f.h * 0.18, -f.d / 2 - 0.002);
+    g.add(led);
+    return g;
+  },
+  projector(f) {
+    const g = new THREE.Group(), poleM = mat('#334155', 0.35, 0.7), bodyM = mat('#0f172a', 0.35, 0.3);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, f.h, 16), poleM);
+    pole.position.y = f.h / 2;
+    pole.castShadow = true;
+    g.add(pole);
+    g.add(box(poleM, -0.07, 0.07, 0, 0.015, -0.07, 0.07));
+    g.add(box(poleM, -0.07, 0.07, f.h - 0.015, f.h, -0.07, 0.07));
+    const py = 2.15;
+    g.add(box(poleM, -0.08, 0.08, py - 0.015, py, -0.08, 0.08));
+    g.add(box(bodyM, -0.075, 0.075, py, py + 0.12, -0.075, 0.075));
+    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.03, 20), new THREE.MeshBasicMaterial({ color: 0x38bdf8, toneMapped: false }));
+    lens.rotation.y = Math.PI;
+    lens.position.set(0, py + 0.06, -0.078);
+    g.add(lens);
+    return g;
+  },
+  robotarm(f) {
+    const g = new THREE.Group(), red = mat(f.color, 0.35, 0.3), dark = mat('#1f2937', 0.4, 0.5);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.04, 20), dark);
+    base.position.y = 0.02;
+    base.castShadow = true;
+    g.add(base);
+    const seg1 = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.15, 0.036), red);
+    seg1.position.set(0, 0.11, 0.01);
+    seg1.rotation.x = 0.25;
+    seg1.castShadow = true;
+    g.add(seg1);
+    const joint = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.05, 16), dark);
+    joint.rotation.z = Math.PI / 2;
+    joint.position.set(0, 0.18, 0.03);
+    g.add(joint);
+    const seg2 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.14, 0.03), red);
+    seg2.position.set(0, 0.23, -0.02);
+    seg2.rotation.x = -0.75;
+    seg2.castShadow = true;
+    g.add(seg2);
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.025, 0.045), dark);
+    grip.position.set(0, 0.28, -0.075);
+    g.add(grip);
+    return g;
+  },
+  ipad(f) {
+    const g = new THREE.Group(), metal = mat('#334155', 0.3, 0.6);
+    g.add(box(metal, -0.05, 0.05, 0, 0.008, -0.045, 0.045));
+    const tab = new THREE.Mesh(new THREE.BoxGeometry(f.w, 0.16, 0.009), mat('#0f172a', 0.3, 0.4));
+    tab.position.set(0, 0.095, 0);
+    tab.rotation.x = -0.35;
+    tab.castShadow = true;
+    g.add(tab);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(f.w - 0.018, 0.142), new THREE.MeshBasicMaterial({ color: 0x0ea5e9, toneMapped: false }));
+    scr.position.set(0, 0.095, -0.0055);
+    scr.rotation.y = Math.PI;
+    scr.rotation.x = 0.35;
+    g.add(scr);
     return g;
   },
 };
